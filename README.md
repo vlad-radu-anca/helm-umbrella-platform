@@ -1,14 +1,14 @@
-# EMS Platform Helm Charts
+# Platform Helm Charts
 
 Production-grade Helm charts for a multi-component EMS (Element Management System) platform. Built during production client work; sanitized for portfolio use.
 
-Charts are published as OCI artifacts to GitHub Container Registry (`ghcr.io/vlad-radu-anca`) and consumed by the umbrella chart `ems-platform-stack` as a one-click deployment.
+Charts are published as OCI artifacts to GitHub Container Registry (`ghcr.io/vlad-radu-anca`) and consumed by the umbrella chart `platform-stack` as a one-click deployment.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    ems-platform-stack (umbrella)                    │
+│                    platform-stack (umbrella)                    │
 │          One-click install: all 22 subcharts as OCI deps            │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
@@ -59,13 +59,13 @@ Charts are published as OCI artifacts to GitHub Container Registry (`ghcr.io/vla
 | `elasticsearch` | Elasticsearch 7.x with persistent storage |
 | `kibana` | Log and metric dashboards |
 | `ngf` | NGINX Gateway Fabric (Kubernetes Gateway API) |
-| `ems-cert-manager` | cert-manager integration and TLS certificates |
+| `cert-manager` | cert-manager integration and TLS certificates |
 | `sftp-server` | Managed SFTP server for bulk file transfers |
 | `spark` | Event analytics and aggregation |
 | `tus` | Resumable file upload server (tus.io protocol) |
 | `misc` | Shared jobs and init resources |
 | `upgrade-stack` | Rolling upgrade helper jobs |
-| `ems-platform-stack` | **Umbrella chart** — deploys all of the above |
+| `platform-stack` | **Umbrella chart** — deploys all of the above |
 
 ## Multi-platform support (on-prem vs AWS)
 
@@ -84,7 +84,7 @@ Templates branch on `{{ include "platform" . }}` to produce the correct configur
 | Secret backend | Kubernetes Secrets | AWS Secrets Manager (CSI driver) |
 | MongoDB URI | On-prem replica set | RDS / DocumentDB |
 | Keycloak URL | Internal DNS | AWS-managed endpoint |
-| Node selector | Static labels | Karpenter: `karpenter-node: ems-autoscalernode-large` |
+| Node selector | Static labels | Karpenter: `karpenter-node: autoscalernode-large` |
 
 ## CI/CD pipeline
 
@@ -99,7 +99,7 @@ Pull Request
 Merge to master
   ├── version-bump     — semver bump from commit keywords (major/minor/patch)
   ├── publish-chart    — helm package + helm push → oci://ghcr.io/vlad-radu-anca
-  └── update-umbrella  — helm dependency update + publish ems-platform-stack
+  └── update-umbrella  — helm dependency update + publish platform-stack
 ```
 
 Semantic version bump is automatic based on commit message keywords:
@@ -129,12 +129,12 @@ Example constraint (apigw):
 
 ```bash
 # Pull the umbrella chart from GHCR
-helm pull oci://ghcr.io/vlad-radu-anca/ems-platform-stack --version 0.7.8
+helm pull oci://ghcr.io/vlad-radu-anca/platform-stack --version 0.7.8
 
 # Install on-prem
-helm upgrade --install ems-platform oci://ghcr.io/vlad-radu-anca/ems-platform-stack \
+helm upgrade --install platform oci://ghcr.io/vlad-radu-anca/platform-stack \
   --version 0.7.8 \
-  --namespace ems-platform \
+  --namespace platform \
   --create-namespace \
   --set global.platform=onprem \
   --set global.loadBalancerIP=<YOUR_LB_IP> \
@@ -142,9 +142,9 @@ helm upgrade --install ems-platform oci://ghcr.io/vlad-radu-anca/ems-platform-st
   --set diesel.data.ems_client_secret=$EMS_CLIENT_SECRET
 
 # Install on AWS (EKS)
-helm upgrade --install ems-platform oci://ghcr.io/vlad-radu-anca/ems-platform-stack \
+helm upgrade --install platform oci://ghcr.io/vlad-radu-anca/platform-stack \
   --version 0.7.8 \
-  --namespace ems-platform \
+  --namespace platform \
   --create-namespace \
   --set global.platform=aws \
   --set global.loadBalancerIP=<YOUR_LB_IP>
