@@ -1,0 +1,434 @@
+suite: test core-api certificate
+templates:
+  - core-api-certificate.yaml
+tests:
+  - it: should not render when platform is not onprem
+    set:
+      platform: aws
+      certificate:
+        name: core-api-tls-secret
+        isCA: true
+        duration: 8760h
+        renewBefore: 168h
+        dnsNames:
+          - core-api
+        subject:
+          organizations:
+            - ems-platform
+        issuerRef:
+          group: cert-manager.io
+          kind: ClusterIssuer
+          name: selfsigned-cluster-issuer
+        secretName: core-api-tls-secret
+        commonName: my-selfsigned-ca
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render certificate when platform is onprem
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        isCA: true
+        duration: 8760h
+        renewBefore: 168h
+        dnsNames:
+          - core-api
+        subject:
+          organizations:
+            - ems-platform
+        issuerRef:
+          group: cert-manager.io
+          kind: ClusterIssuer
+          name: selfsigned-cluster-issuer
+        secretName: core-api-tls-secret
+        commonName: my-selfsigned-ca
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Certificate
+      - isAPIVersion:
+          of: cert-manager.io/v1
+
+  - it: should set correct metadata name from values
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api-tls-secret
+
+  - it: should set isCA to true from values
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        isCA: true
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.isCA
+          value: true
+
+  - it: should set duration and renewBefore from values
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        duration: 8760h
+        renewBefore: 168h
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.duration
+          value: 8760h
+      - equal:
+          path: spec.renewBefore
+          value: 168h
+
+  - it: should generate DNS names with endpoint from values
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        dnsNames:
+          - core-api
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: mycompany.com
+    asserts:
+      - contains:
+          path: spec.dnsNames
+          content: core-api.mycompany.com
+
+  - it: should set subject organizations from values
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        subject:
+          organizations:
+            - ems-platform
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - contains:
+          path: spec.subject.organizations
+          content: ems-platform
+
+  - it: should set issuer reference from values
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        issuerRef:
+          group: cert-manager.io
+          kind: ClusterIssuer
+          name: selfsigned-cluster-issuer
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.issuerRef.group
+          value: cert-manager.io
+      - equal:
+          path: spec.issuerRef.kind
+          value: ClusterIssuer
+      - equal:
+          path: spec.issuerRef.name
+          value: selfsigned-cluster-issuer
+
+  - it: should set secret name and common name from values
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        secretName: core-api-tls-secret
+        commonName: my-selfsigned-ca
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.secretName
+          value: core-api-tls-secret
+      - equal:
+          path: spec.commonName
+          value: my-selfsigned-ca
+
+  - it: should set private key configuration from values
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.privateKey.algorithm
+          value: RSA
+      - equal:
+          path: spec.privateKey.encoding
+          value: PKCS1
+      - equal:
+          path: spec.privateKey.size
+          value: 2048
+
+  - it: should work with complete values.yaml configuration
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        isCA: true
+        duration: 8760h
+        renewBefore: 168h
+        dnsNames:
+          - core-api
+        subject:
+          organizations:
+            - ems-platform
+        issuerRef:
+          group: cert-manager.io
+          kind: ClusterIssuer
+          name: selfsigned-cluster-issuer
+        secretName: core-api-tls-secret
+        commonName: my-selfsigned-ca
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: ems.example.local
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: core-api-tls-secret
+      - equal:
+          path: spec.isCA
+          value: true
+      - equal:
+          path: spec.duration
+          value: 8760h
+      - equal:
+          path: spec.renewBefore
+          value: 168h
+      - equal:
+          path: spec.dnsNames[0]
+          value: core-api.ems.example.local
+      - equal:
+          path: spec.subject.organizations[0]
+          value: ems-platform
+      - equal:
+          path: spec.issuerRef.name
+          value: selfsigned-cluster-issuer
+      - equal:
+          path: spec.secretName
+          value: core-api-tls-secret
+      - equal:
+          path: spec.commonName
+          value: my-selfsigned-ca
+      - equal:
+          path: spec.privateKey.algorithm
+          value: RSA
+      - equal:
+          path: spec.privateKey.size
+          value: 2048
+
+  - it: should handle multiple DNS names
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        dnsNames:
+          - core-api
+          - core-api-api
+          - core-api-web
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: company.org
+    asserts:
+      - equal:
+          path: spec.dnsNames
+          value:
+            - core-api.company.org
+            - core-api-api.company.org
+            - core-api-web.company.org
+
+  - it: should handle multiple organizations
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        subject:
+          organizations:
+            - ems-platform
+            - engineering
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.subject.organizations
+          value:
+            - ems-platform
+            - engineering
+
+  - it: should work with different endpoints
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        dnsNames:
+          - core-api
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: staging.example.co.uk
+    asserts:
+      - equal:
+          path: spec.dnsNames[0]
+          value: core-api.staging.example.co.uk
+
+  - it: should handle different certificate names
+    set:
+      platform: onprem
+      certificate:
+        name: custom-core-api-cert
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: metadata.name
+          value: custom-core-api-cert
+
+  - it: should handle isCA false
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        isCA: false
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.isCA
+          value: false
+
+  - it: should handle different issuer types
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        issuerRef:
+          group: cert-manager.io
+          kind: Issuer
+          name: letsencrypt-prod
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 2048
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.issuerRef.kind
+          value: Issuer
+      - equal:
+          path: spec.issuerRef.name
+          value: letsencrypt-prod
+
+  - it: should handle different private key sizes (1024)
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 1024
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.privateKey.size
+          value: 1024
+
+  - it: should handle different private key sizes (4096)
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 4096
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.privateKey.size
+          value: 4096
+
+  - it: should handle different private key sizes (8192)
+    set:
+      platform: onprem
+      certificate:
+        name: core-api-tls-secret
+        privateKey:
+          algorithm: RSA
+          encoding: PKCS1
+          size: 8192
+      endpoint: example.com
+    asserts:
+      - equal:
+          path: spec.privateKey.size
+          value: 8192

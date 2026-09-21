@@ -1,0 +1,129 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emsui
+  labels:
+    {{- include "emsui.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.emsui.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "emsui.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "emsui.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.emsui.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      priorityClassName: ems-platform-high-priority
+      initContainers:
+        - name: wait-for-toc
+          image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+          command: [ "/bin/sh", "-c" ]
+          args:
+            [
+                "while [[ $(curl -sw '%{http_code}' http://toc-headless:7001/health -o /dev/null) -ne 200 ]]; do sleep 30; echo 'Waiting for the toc to be ready...'; done; echo 'Connection with keycloak established'",
+            ]
+        - name: wait-for-keycloak
+          image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+          command:
+            - /bin/sh
+            - -c
+            - >
+              {{- if eq (include "platform" .) "aws" }}
+              until curl -s -o /dev/null -w "%{http_code}" {{ .Values.ConnectionUrls.keycloak.aws }}/realms/DefaultTenant | grep -q 200;
+              {{- else if eq (include "platform" .) "onprem" }}
+              until curl -s -o /dev/null -w "%{http_code}" {{ .Values.ConnectionUrls.keycloak.onprem }}/realms/DefaultTenant | grep -q 200;
+              {{- end }}
+              do echo "Waiting for Keycloak to be available..."; sleep 5; done;
+              echo "Connection with Keycloak established."
+      containers:
+        - image: "{{ .Values.emsui.image }}:{{ .Values.emsui.tag }}"
+          imagePullPolicy: {{ .Values.emsui.pullPolicy }}
+          env:
+            - name: BUILD_VERSION
+              value: "{{ .Values.emsui.tag }}"
+            - name: UI_EMS_SERIALNUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: ems-serialnumber
+                  key: EMS_SERIALNUMBER
+          startupProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 10
+            httpGet:
+              host:
+              scheme: HTTP
+              path: /status
+              port: 80
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: 80
+              httpHeaders:
+            failureThreshold: 6
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 80
+            failureThreshold: 10
+            periodSeconds: 5          
+          ports:
+            - containerPort: 80
+              name: http
+          name: ems-ui
+          resources:
+            {{- toYaml .Values.emsui.resources | nindent 12 }}
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: keycloak-config
+              mountPath: /usr/share/nginx/html/assets/configs/keycloak.json
+              subPath: keycloak.json
+            - name: app-config
+              mountPath: /usr/share/nginx/html/assets/configs/app.json
+              subPath: app.json
+      restartPolicy: Always
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.emsui.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.emsui.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.emsui.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.emsui.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.emsui.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+        - name: keycloak-config
+          configMap:
+            name: ems-ui-keycloak-config
+        - name: app-config
+          configMap:
+            name: ems-ui-app-config

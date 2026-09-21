@@ -1,0 +1,27 @@
+{{- if eq .Values.platform "onprem" }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: emsui-tls-secret
+spec:
+  isCA: {{ .Values.certificate.isCA }}
+  duration: {{ .Values.certificate.duration }}
+  renewBefore: {{ .Values.certificate.renewBefore }}
+  dnsNames:
+  - {{ .Values.emsui.subdomain }}.{{ .Values.endpoint }}
+  subject:
+    organizations:
+    {{- range .Values.certificate.subject.organizations }}
+    - {{ . }}
+    {{- end }}
+  issuerRef:
+    group: {{ .Values.certificate.issuerRef.group }}
+    kind: {{ .Values.certificate.issuerRef.kind }}
+    name: {{ .Values.certificate.issuerRef.name }}
+  secretName: emsui-tls-secret
+  commonName: {{ .Values.certificate.commonName }}
+  privateKey:
+    algorithm: {{ .Values.certificate.privateKey.algorithm }}
+    encoding: {{ .Values.certificate.privateKey.encoding }}
+    size: {{ .Values.certificate.privateKey.size }}
+{{- end }}

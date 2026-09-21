@@ -1,0 +1,52 @@
+{{- if .Values.toc.smallcell_support.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: toc
+  labels:
+    {{- include "toc.labels" . | nindent 4 }}
+  {{- if eq .Values.platform "onprem" }}
+  annotations:
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  {{- end }}
+spec:
+  {{- if eq .Values.platform "onprem" }}
+  type: {{ ternary "LoadBalancer" "ClusterIP" .Values.dev_mode }}
+  {{- if .Values.dev_mode }}
+  loadBalancerIP: {{ .Values.toc.loadBalancerIP }}
+  {{- end }}
+  {{- else if eq .Values.platform "aws" }}
+  type: {{ .Values.toc.service.type }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.toc.service.port }}
+      targetPort: 7001
+      protocol: TCP
+      name: http
+  {{- if and (eq .Values.platform "onprem") .Values.dev_mode }}
+    - port: 40000
+      targetPort: 40000
+      protocol: TCP
+      name: debug
+  {{- end }}
+  selector:
+    {{- include "toc.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: toc-headless
+  labels:
+    {{- include "toc.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.toc.service.port }}
+      targetPort: 7001
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "toc.selectorLabels" . | nindent 4 }}
+{{- end }}

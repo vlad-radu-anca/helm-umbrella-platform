@@ -1,0 +1,400 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Values Schema for Elastic Deployment",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "aws",
+        "onprem"
+      ],
+      "description": "Deployment platform, either 'aws' or 'onprem'."
+    },
+    "endpoint": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9.-]+$",
+      "description": "Endpoint for the service, typically a FQDN."
+    },
+    "ConnectionUrls": {
+      "type": "object",
+      "properties": {
+        "elastic": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to connect to Elasticsearch instance."
+        }
+      },
+      "required": [
+        "elastic"
+      ]
+    },
+    "elastic": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ],
+          "description": "Kubernetes image pull policy."
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "shardCount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "image",
+        "tag",
+        "pullPolicy"
+      ]
+    },
+    "elasticsearch": {
+      "type": "object",
+      "properties": {
+        "fsid": {
+          "type": "string"
+        },
+        "fsaccesspoint": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        },
+        "elastic_java_options": {
+          "type": "string"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "persistent_size": {
+          "type": "string",
+          "pattern": "^[0-9]+Gi$",
+          "description": "Persistent volume size, e.g., '100Gi'."
+        },
+        "retention": {
+          "type": "object",
+          "properties": {
+            "Job": {
+              "type": "boolean"
+            },
+            "realtime": {
+              "type": "string",
+              "pattern": "^[0-9]+d$"
+            }
+          }
+        },
+        "nameOverride": {
+          "type": "string"
+        },
+        "fullnameOverride": {
+          "type": "string"
+        },
+        "podAnnotations": {
+          "type": "object"
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "http": {
+              "type": "object",
+              "properties": {
+                "port": {
+                  "type": "integer"
+                },
+                "protocol": {
+                  "type": "string"
+                },
+                "targetPort": {
+                  "type": "integer"
+                }
+              }
+            },
+            "transport": {
+              "type": "object",
+              "properties": {
+                "port": {
+                  "type": "integer"
+                },
+                "protocol": {
+                  "type": "string"
+                },
+                "targetPort": {
+                  "type": "integer"
+                }
+              }
+            },
+            "type": {
+              "type": "string"
+            }
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "className": {
+              "type": "string"
+            },
+            "annotations": {
+              "type": "object"
+            },
+            "hosts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "host": {
+                    "type": "string"
+                  },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string"
+                        },
+                        "pathType": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "tls": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "secretName": {
+                    "type": "string"
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+          "nodeSelector": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "object" },
+                { "type": "null" }
+              ]
+            }
+          },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "initContainers": {
+          "type": "object"
+        },
+        "volumeMounts": {
+          "type": "array"
+        },
+        "volumes": {
+          "type": "array"
+        }
+      }
+    },
+    "certificates": {
+      "type": "object",
+      "properties": {
+        "ca": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "isCA": {
+              "type": "boolean"
+            },
+            "duration": {
+              "type": "string"
+            },
+            "renewBefore": {
+              "type": "string"
+            },
+            "dnsNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "issuerRef": {
+              "type": "object",
+              "properties": {
+                "group": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            },
+            "secretName": {
+              "type": "string"
+            },
+            "commonName": {
+              "type": "string"
+            },
+            "privateKey": {
+              "type": "object",
+              "properties": {
+                "algorithm": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "elastic": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "string"
+            },
+            "renewBefore": {
+              "type": "string"
+            },
+            "secretName": {
+              "type": "string"
+            },
+            "isCA": {
+              "type": "boolean"
+            },
+            "dnsNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "subject": {
+              "type": "object",
+              "properties": {
+                "organizations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "privateKey": {
+              "type": "object",
+              "properties": {
+                "algorithm": {
+                  "type": "string"
+                },
+                "encoding": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              }
+            },
+            "issuerRef": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "platform",
+    "endpoint",
+    "elasticsearch",
+    "certificates"
+  ]
+}

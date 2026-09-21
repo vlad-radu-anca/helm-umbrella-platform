@@ -1,0 +1,25 @@
+{{- if .Values.sftp.persistentVolume.enabled -}}
+{{- if not .Values.sftp.persistentVolume.existingClaim -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  {{- if .Values.sftp.persistentVolume.annotations }}
+  annotations:
+{{ toYaml .Values.sftp.persistentVolume.annotations | indent 4 }}
+  {{- end }}
+  name: {{ template "sftp-server.fullname" . }}-data
+spec:
+  accessModes:
+{{ toYaml .Values.sftp.persistentVolume.accessModes | indent 4 }}
+{{- if .Values.sftp.persistentVolume.storageClass }}
+{{- if (eq "-" .Values.sftp.persistentVolume.storageClass) }}
+  storageClassName: ""
+{{- else }}
+  storageClassName: "{{ .Values.sftp.persistentVolume.storageClass }}"
+{{- end }}
+{{- end }}
+  resources:
+    requests:
+      storage: "{{ .Values.sftp.persistentVolume.size }}"
+{{- end -}}
+{{- end -}}

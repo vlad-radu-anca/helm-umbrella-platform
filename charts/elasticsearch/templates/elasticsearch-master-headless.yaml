@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+  name: elastic-headless
+spec:
+  clusterIP: None
+  type: {{ .Values.elasticsearch.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.elasticsearch.service.http.port }}
+      protocol: {{ .Values.elasticsearch.service.http.protocol }}
+      targetPort: {{ .Values.elasticsearch.service.http.targetPort }}
+    - name: transport
+      port: {{ .Values.elasticsearch.service.transport.port }}
+      protocol: {{ .Values.elasticsearch.service.transport.protocol }}
+      targetPort: {{ .Values.elasticsearch.service.transport.targetPort }}
+  selector:
+    {{- include "elasticsearch.selectorLabels" . | nindent 4 }}

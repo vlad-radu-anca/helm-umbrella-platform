@@ -1,0 +1,51 @@
+platform: onprem
+cpeSupport:
+  enabled: false
+imagePullSecrets: []
+image: public.ecr.aws/bitnami/mongodb
+tag: 8.0.12-debian-12-r0
+pullPolicy: Always
+replicaCount: 3
+persistent_size: 10Gi
+mongo_wiredtiger_cache_size: 256
+podAnnotations: {}
+tolerations: []
+resources: {}
+nodeSelector:
+  onprem: {}
+  aws: {}
+affinity: {}
+service:
+  type: ClusterIP
+  port: 27017
+ConnectionUrls:
+  mongo:
+    uri: "mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0"
+mongoInit:
+  enabled: true
+  image: ghcr.io/vlad-radu-anca/mongo-init
+  tag: latest
+  pullPolicy: Always
+  imagePullSecrets: []
+  cfg: {}
+  waitForServer: {}
+  cfg:
+    credsUsername: root-user
+    credsSecret: mongo-admin-credentials
+    credsDir: "/opt/ems-platform/config/mongo/admin"
+    users: []
+    skipUpdate: false
+  nodeSelector:
+    onprem: {}
+    aws: {}
+    default: {}
+  affinity: {}
+  resources: {}
+  command: ""
+  nameOverride: ""
+  serviceAccountName: ""
+
+securityContext:
+  fsGroup: 1001
+  runAsUser: 1001
+  runAsGroup: 1001

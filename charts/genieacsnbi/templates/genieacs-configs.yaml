@@ -1,0 +1,15 @@
+{{- if .Values.cpeSupport.enabled }}
+---
+apiVersion: v1
+data:
+  MONGO_HOST: mongo
+  MONGO_PORT: "27017"
+  MONGO_URL: http://mongo:27017
+  WAITFORIT_HOST: mongo
+  WAITFORIT_PORT: "27017"
+  WAITFORIT_URL: http://mongo:27017
+kind: ConfigMap
+metadata:
+  name: genieacs-nbi-config
+---
+{{- end }}

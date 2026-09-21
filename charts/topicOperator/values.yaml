@@ -1,0 +1,35 @@
+topicOperator:
+  name: strimzi-topic-operator
+  replicaCount: 1
+  serviceAccountName: strimzi-topic-operator
+  containerName: strimzi-topic-operator
+  image: quay.io/strimzi/operator:0.46.1
+  runCommand: /opt/strimzi/bin/topic_operator_run.sh
+  tmpSizeLimit: "5Mi"
+  resourceLabels: "strimzi.io/cluster=ems-platform-kafka-cluster"
+  kafkaBootstrapServers: "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  fullReconciliationIntervalMs: "120000"
+  logLevel: "INFO"
+  tlsEnabled: "false"
+  resources:
+    limits:
+      memory: "500Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+  strategyType: Recreate
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-small
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+  kafkaCluster:
+    enabled: true
+  readinessPort: 8080
+  initContainers:
+    busyboxImage:
+      repo: busybox
+      tag: 1.36.1 

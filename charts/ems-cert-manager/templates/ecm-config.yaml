@@ -1,0 +1,79 @@
+{{- if .Values.smallcell_support.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ems-certs-mgmt-application-config
+data:
+  application.yaml: |
+    app:
+      name: "cert_mgmt"
+      port: 7702
+      baseUrl: http://localhost
+      devMode: {{ if eq .Values.platform "aws" }}false{{ else }}{{ .Values.dev_mode | default false }}{{ end }}
+      rateLimit:
+        maxRequests: 100
+        expiration: 10 # time in seconds
+
+    swagger:
+      generate: false
+
+    mongoClient:
+      {{- if eq (include "platform" .) "aws" }}
+      uri: "{{ .Values.ConnectionUrls.mongo.aws.uri }}"
+      {{- else }}
+      uri: "{{ .Values.ConnectionUrls.mongo.onprem.uri }}"
+      authSource: tocdb
+      {{- end }}
+      database: tocdb
+      connectionTimeout: 30
+      socketTimeout: 10
+      serverSelection: 30
+      minPoolSize: 1
+      maxPoolSize: 20
+      heartBeatInterval: 10
+      retryWrites: true
+
+    logger:
+      logLevel: "DEBUG"
+      callerLevel: "DEBUG"
+      stackTraceLevel: "ERROR"
+      charLimit: 1024
+      formatJson: true
+
+    fiber:
+      enablePrintRoutes: true
+
+    ems:
+      serialNumber: {{ .Values.emsui.serial_number | quote }}
+      spcId: {{ .Values.spc_support.serial_number | quote }}
+
+    sparkClient:
+      url: {{ .Values.ConnectionUrls.spark | quote }}
+      callbackUrl: {{ .Values.ConnectionUrls.certsmgmt | quote }}
+      connectionTimeout: 30
+
+    spc:
+      ip: {{ .Values.spc_support.address | quote }}
+      interactionMatrixDeviceLimit: 16
+
+    secretStorage:
+      {{- if eq (include "platform" .) "aws" }}
+      prefix: "{{ .Values.emscertmanager.aws_config.resource_prefix }}_"
+      suffix: "_{{ .Values.emscertmanager.aws_config.resource_suffix }}"
+      region: {{ .Values.emscertmanager.aws_config.awsCredentials.region | quote }}
+      namespace: "ems-platform"
+      {{- else }}
+      awsMode: false
+      awsCredentials:
+        accessKey: "accessKey"
+        secretId: "secretId"
+        region: "us-east-1"
+      namespace: "ems-platform"
+      {{- end }}
+
+    elasticClient:
+      addresses:
+        - {{ .Values.ConnectionUrls.elastic | quote }}
+      connectionTimeout: 30
+{{- end }}

@@ -1,0 +1,123 @@
+{{- if .Values.upgradeTransformsPg.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upgrade-transforms-pg
+  labels:
+    app: upgrade-transforms-pg
+    {{- include "upgrade-stack.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.upgradeTransformsPg.replicaCount }}
+  selector:
+    matchLabels:
+      app: upgrade-transforms-pg
+  template:
+    metadata:
+      labels:
+        app: upgrade-transforms-pg
+    spec:
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      {{- with .Values.imageDefaults.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: upgrade-transforms-pg
+          image: {{ .Values.upgradeTransformsPg.image }}:{{ .Values.upgradeTransformsPg.tag }}
+          imagePullPolicy: {{ .Values.imageDefaults.pullPolicy }}
+          env:
+            - name: PG_ADMIN_USERNAME
+              value: postgres
+            - name: PG_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
+                  key: pg-admin-client-password
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_EMS_PLATFORM_TARGET_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
+                  key: {{ (index .Values.envFromSecrets.pg "emsPlatform").usernameKey }}
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_EMS_PLATFORM_TARGET_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
+                  key: {{ (index .Values.envFromSecrets.pg "emsPlatform").passwordKey }}
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_EMS_PLATFORM_SOURCE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
+                  key: {{ (index .Values.envFromSecrets.pg "emsPlatform").usernameKey }}
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_EMS_PLATFORM_SOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
+                  key: {{ (index .Values.envFromSecrets.pg "emsPlatform").passwordKey }}
+# GRAFANA
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_GRAFANA_TARGET_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
+                  key: {{ .Values.envFromSecrets.pg.grafana.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_GRAFANA_TARGET_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
+                  key: {{ .Values.envFromSecrets.pg.grafana.passwordKey }}
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_GRAFANA_SOURCE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
+                  key: {{ .Values.envFromSecrets.pg.grafana.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_GRAFANA_SOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
+                  key: {{ .Values.envFromSecrets.pg.grafana.passwordKey }}
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+            {{- if .Values.mounts.elastic }}
+            - name: elastic-secrets
+              mountPath: /opt/ems-platform/config/elastic
+              readOnly: true
+            {{- end }}
+            {{- if .Values.mounts.pg }}
+            - name: pg-secrets
+              mountPath: /opt/ems-platform/config/postgres
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.upgradeTransformsPg.resources | nindent 12 }}
+      volumes:
+        - name: app-config
+          configMap:
+            name: upgrade-stack-config
+        {{- if .Values.mounts.elastic }}
+        - name: elastic-secrets
+          {{- if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: elastic-admin-client
+          {{- else }}
+          secret:
+            secretName: internal-elastic-admin-client
+          {{- end }}
+        {{- end }}
+        {{- if .Values.mounts.pg }}
+        - name: pg-secrets
+          {{- if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: external-rds-keycloak-client
+          {{- else }}
+          secret:
+            secretName: {{ .Values.secrets.pg }}
+          {{- end }}
+        {{- end }}
+{{- end }}

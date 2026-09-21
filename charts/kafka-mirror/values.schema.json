@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["kafkaMirror"],
+  "properties": {
+
+    "kafkaMirror": {
+      "type": "object",
+      "required": ["enabled", "name", "kafkaVersion", "replicaCount", "sourceCluster", "targetCluster"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "name": { "type": "string" },
+        "kafkaVersion": { "type": "string" },
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "sourceCluster": {
+          "$ref": "#/definitions/KafkaMirrorCluster"
+        },
+        "targetCluster": {
+          "$ref": "#/definitions/KafkaMirrorCluster"
+        },
+        "sourceConnector": {
+          "$ref": "#/definitions/KafkaMirrorConnector"
+        },
+        "heartbeatConnector": {
+          "$ref": "#/definitions/KafkaMirrorConnector"
+        },
+        "checkpointConnector": {
+          "$ref": "#/definitions/KafkaMirrorConnector"
+        },
+        "topicsPattern": { "type": "string" },
+        "groupsPattern": { "type": "string" },
+        "topicsExcludePattern": { "type": "string" },
+        "groupsExcludePattern": { "type": "string" }
+      }
+    }
+  },
+
+  "definitions": {
+      "KafkaMirrorCluster": {
+        "type": "object",
+        "required": ["name", "bootstrapServers"],
+        "properties": {
+            "name": { "type": "string" },
+            "trustSecret": { "type": "string" },
+            "auth": {
+               "type": "object",
+               "required": ["type"],
+               "properties": {
+                 "type": {
+                     "type": "string",
+                     "enum": ["tls", "scram-sha-512"]
+                 },
+                 "secret": { "type": "string" },
+                 "config": { "type": "object" }
+               }
+            },
+            "bootstrapServers": { "type": "string" }
+        }
+      },
+      "KafkaMirrorConnector": {
+        "type": "object",
+        "properties": {
+            "config": { "type": "object" }
+        }
+      }
+  }
+}

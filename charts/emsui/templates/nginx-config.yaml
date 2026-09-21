@@ -1,0 +1,198 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  nginx.conf: |
+    # Remove 'user nginx;' directive - not needed for non-root containers
+    worker_processes auto;
+
+    error_log /var/log/nginx/error.log notice;
+    # Change PID file location to writable directory
+    pid /tmp/nginx.pid;
+
+    events {
+      worker_connections 1024;
+    }
+
+    http {
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+
+      log_format proxy_logging '[$time_local] $remote_addr $status "$body_bytes_sent B" '
+                                '"$request" $http_referer $http_host '
+                                '$http_user_agent $http_x_forwarded_for '
+                                'Proxy: $server_name -> $upstream - $proxy_host $upstream_addr ';
+
+      access_log /var/log/nginx/access.log proxy_logging;
+
+      sendfile on;
+      keepalive_timeout 4m;
+      gzip on;
+
+      map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+      }
+
+      map $status $expires {
+        default off;
+        301 30m;
+      }
+
+      map $http_x_forwarded_proto $forwarded_proto {
+        default $http_x_forwarded_proto;
+        '' $scheme;
+      }
+
+      map $http_x_forwarded_host $forwarded_host {
+        default $http_x_forwarded_host;
+        '' $host;
+      }
+
+      server {
+        listen 80;
+        # listen [::]:80;  # IPv6 optional
+
+        set $upstream local;
+
+        server_name {{ .Values.emsui.subdomain }}.{{ .Values.endpoint }};
+        {{- if eq (include "platform" .) "aws" }}
+        resolver kube-dns.kube-system.svc.cluster.local valid=30s;
+        {{- else if eq (include "platform" .) "onprem" }}
+        resolver coredns.kube-system.svc.cluster.local valid=30s;
+        {{- end }}
+        set $domain {{ template "emsui.Namespace" . }}.svc.cluster.local;
+
+        expires $expires;
+        absolute_redirect off;
+        client_max_body_size 400M;
+
+        proxy_busy_buffers_size 512k;
+        proxy_buffers 4 512k;
+        proxy_buffer_size 256k;
+        proxy_redirect off;
+
+        {{- if eq (include "platform" .) "onprem" }}
+        location ~ ^/auth/(.*)$ {
+          set $upstream keycloak.$domain;
+          proxy_pass https://$upstream/auth/$1$is_args$args;
+        }
+        {{- else if eq (include "platform" .) "aws" }}
+        location ~ ^/auth/(.*)$ {
+          set $upstream {{ .Values.ConnectionUrls.keycloak.aws }};
+          proxy_pass $upstream/$1$is_args$args;
+        }
+        {{- end }}
+
+        location ~ ^/toc/(.*)$ {
+          set $upstream toc.$domain;
+          proxy_pass http://$upstream:7001/$1$is_args$args;
+        }
+
+         {{- if eq (include "platform" .) "onprem" }}
+        location ~ ^/certsmgmt/(.*)$ {
+          set $upstream ems-certs-mgmt.$domain;
+          proxy_pass http://$upstream:7702/$1$is_args$args;
+        }
+        {{- else if eq (include "platform" .) "aws" }}
+        location ~ ^/cts/(.*)$ {
+          set $upstream cts.$domain;
+          proxy_pass http://$upstream:7701/$1$is_args$args;
+        }
+        {{- end }}
+
+        location ~ ^/certsmgmt/(.*)$ {
+          set $upstream ems-certs-mgmt.$domain;
+          proxy_pass http://$upstream:7702/$1$is_args$args;
+        }
+
+        location ~ ^/apidocs/(.*)$ {
+          set $upstream swagger.$domain;
+          proxy_pass http://$upstream:42002/$1$is_args$args;
+        }
+
+        location ~ ^/tus/(.*)$ {
+          set $upstream tus.$domain;
+          proxy_pass http://$upstream:8080/tus/$1$is_args$args;
+          proxy_request_buffering off;
+          proxy_buffering off;
+          proxy_read_timeout 300s;
+          proxy_send_timeout 300s;
+          client_max_body_size 4g;
+          proxy_set_header X-Forwarded-Host $forwarded_host;
+          proxy_set_header X-Forwarded-Proto $forwarded_proto;
+          proxy_set_header Host $host;
+        }
+
+        location ~ ^/diesel/doe/(join|profile/join2|logout) {
+          deny all;
+          return 403;
+        }
+
+        location ~ ^/diesel/(.*)$ {
+          set $upstream core-api.$domain;
+          proxy_pass http://$upstream:9000/$1$is_args$args;
+        }
+
+        location ~ ^/spark/(.*)$ {
+          set $upstream spark.$domain;
+          proxy_pass http://$upstream:4040/$1$is_args$args;
+        }
+
+        location ~ ^/sparkEnb/(.*)$ {
+          set $upstream spark.$domain;
+          proxy_pass http://$upstream:4041/$1$is_args$args;
+          proxy_read_timeout 180s;
+        }
+
+        location ~ ^/grafana/api/live/(.*)$ {
+          set $upstream grafana.$domain;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;
+          proxy_set_header Host $host;
+          proxy_pass http://$upstream:3001/grafana/api/live/$1$is_args$args;
+        }
+
+        location ~ ^/grafana/(login|logout) {
+          deny all;
+          return 403;
+        }
+
+        location ~ ^/grafana/(.*)$ {
+          set $upstream grafana.$domain;
+          proxy_set_header Host $host;
+          proxy_pass http://$upstream:3001/grafana/$1$is_args$args;
+        }
+
+        {{- if .Values.emsui.cpe_support.enabled }}
+        location ~ ^/acs/(.*)$ {
+          set $upstream genieacsnbi.$domain;
+          proxy_pass http://$upstream:7557/$1$is_args$args;
+        }
+        {{- end }}
+
+        location /help/ {
+          root /usr/share/nginx/html;
+          index index.html index.htm;
+          try_files $uri $uri/ /help/index.html;
+        }
+
+        location /assets/brand/ {
+          rewrite ^/assets/brand/(.*)$ /assets/brands/{{ .Values.emsui.BRAND_NAME }}/$1 break;
+          root /usr/share/nginx/html;
+        }
+
+        location / {
+          root /usr/share/nginx/html;
+          index index.html index.htm;
+          try_files $uri $uri/ /index.html;
+        }
+
+        location = /status {
+          access_log off;
+          return 200;
+        }
+      }
+    }

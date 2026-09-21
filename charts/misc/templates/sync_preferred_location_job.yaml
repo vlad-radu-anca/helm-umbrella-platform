@@ -1,0 +1,47 @@
+{{- if .Values.cpe_support.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-preferred-location-job
+spec:
+  schedule: "*/30 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          imagePullSecrets:
+            - name: regcred
+          initContainers:
+            - name: wait-for-dependency
+              image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+              command: ["/bin/sh", "-c"]
+              args:
+                [
+                    "while [[ $(curl -sw '%{http_code}' http://core-api:9000/diesel/rest/v1/ems/local/started -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for core-api to be ready...'; done; echo 'core-api is ready'",
+                ]
+          containers:
+            - name: sync-preferred-location-job
+              image: "{{ .Values.CronJobs.SyncPreferredLocation.image }}:{{ .Values.CronJobs.SyncPreferredLocation.tag }}"
+              imagePullPolicy: Always
+              envFrom:
+                - configMapRef:
+                    name: elastic-auth-env
+                - configMapRef:
+                    name: elastic-host-env
+              env:
+                - name: SyncPreferredLocation_JOB_EXIT_TIME
+                  value: "{{ .Values.CronJobs.SyncPreferredLocation.exitTime }}"
+                - name: CPE_SUPPORT
+                  value: "{{ .Values.cpe_support.enabled }}"
+                - name: ENB_SUPPORT
+                  value: "{{ .Values.enb_support.enabled }}"
+                - name: SMALLCELL_SUPPORT
+                  value: "{{ .Values.smallcell_support.enabled }}"
+                - name: VERIFY_SSL
+                  value: "true"
+              resources: {}
+          restartPolicy: Never
+{{- end }}

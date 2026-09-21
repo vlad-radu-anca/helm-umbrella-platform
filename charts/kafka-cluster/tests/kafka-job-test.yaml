@@ -1,0 +1,22 @@
+suite: Kafka Init Job Tests
+templates:
+  - templates/kafka-helm-posthook.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should create a job with the correct name
+    asserts:
+      - matchRegex:
+          path: metadata.name
+          pattern: "^kafka-init-.*"
+
+  - it: should run the correct container image
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: my-kafka-init-image:latest
+
+  - it: should contain environment variables
+    asserts:
+      - isNotEmpty:
+          path: spec.template.spec.containers[0].env

@@ -1,0 +1,23 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: ems-platform-high-priority
+value: 10
+globalDefault: false
+description: "high priority"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: ems-platform-medium-priority
+value: 9
+globalDefault: false
+description: "medium priority"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: ems-platform-low-priority
+value: 8
+globalDefault: false
+description: "low priority"

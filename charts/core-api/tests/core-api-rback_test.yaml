@@ -1,0 +1,254 @@
+suite: test core-api rbac
+templates:
+  - core-api-rbac.yaml
+tests:
+  - it: should not render when rbac is disabled
+    set:
+      coreApi:
+        rbac:
+          enabled: false
+        platform: aws
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when platform is not aws
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: gcp
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when rbac is disabled and platform is not aws
+    set:
+      coreApi:
+        rbac:
+          enabled: false
+        platform: gcp
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render all rbac resources when enabled and platform is aws
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: aws
+    asserts:
+      - hasDocuments:
+          count: 3
+      - isKind:
+          of: ServiceAccount
+        documentIndex: 0
+      - isKind:
+          of: Role
+        documentIndex: 1
+      - isKind:
+          of: RoleBinding
+        documentIndex: 2
+
+  - it: should use correct API versions
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: aws
+    asserts:
+      - isAPIVersion:
+          of: v1
+        documentIndex: 0
+      - isAPIVersion:
+          of: rbac.authorization.k8s.io/v1
+        documentIndex: 1
+      - isAPIVersion:
+          of: rbac.authorization.k8s.io/v1
+        documentIndex: 2
+
+  - it: should have correct ServiceAccount metadata
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: aws
+    asserts:
+      - equal:
+          path: metadata.name
+          value: dieselserviceaccount
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+        documentIndex: 0
+
+  - it: should have correct Role metadata and rules
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: aws
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api-role
+        documentIndex: 1
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+        documentIndex: 1
+      - equal:
+          path: rules[0].apiGroups[0]
+          value: ""
+        documentIndex: 1
+      - equal:
+          path: rules[0].resources[0]
+          value: pods
+        documentIndex: 1
+      - contains:
+          path: rules[0].verbs
+          content: get
+        documentIndex: 1
+      - contains:
+          path: rules[0].verbs
+          content: watch
+        documentIndex: 1
+      - contains:
+          path: rules[0].verbs
+          content: list
+        documentIndex: 1
+
+  - it: should have correct RoleBinding metadata and references
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: aws
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api-rolebinding
+        documentIndex: 2
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+        documentIndex: 2
+      - equal:
+          path: subjects[0].kind
+          value: ServiceAccount
+        documentIndex: 2
+      - equal:
+          path: subjects[0].name
+          value: dieselserviceaccount
+        documentIndex: 2
+      - equal:
+          path: subjects[0].namespace
+          value: NAMESPACE
+        documentIndex: 2
+      - equal:
+          path: roleRef.kind
+          value: Role
+        documentIndex: 2
+      - equal:
+          path: roleRef.name
+          value: core-api-role
+        documentIndex: 2
+      - equal:
+          path: roleRef.apiGroup
+          value: rbac.authorization.k8s.io
+        documentIndex: 2
+
+  - it: should use custom namespace when provided
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: aws
+        namespace: custom-namespace
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+        documentIndex: 1
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+        documentIndex: 2
+      - equal:
+          path: subjects[0].namespace
+          value: NAMESPACE
+        documentIndex: 2
+
+  - it: should use custom service account name when provided
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: aws
+        serviceAccount:
+          name: custom-service-account
+    asserts:
+      - equal:
+          path: metadata.name
+          value: custom-service-account
+        documentIndex: 0
+      - equal:
+          path: subjects[0].name
+          value: custom-service-account
+        documentIndex: 2
+
+  - it: should use custom role name when provided
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+          roleName: custom-role
+        platform: aws
+    asserts:
+      - equal:
+          path: metadata.name
+          value: custom-role
+        documentIndex: 1
+      - equal:
+          path: roleRef.name
+          value: custom-role
+        documentIndex: 2
+
+  - it: should use custom role binding name when provided
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+          roleBindingName: custom-role-binding
+        platform: aws
+    asserts:
+      - equal:
+          path: metadata.name
+          value: custom-role-binding
+        documentIndex: 2
+
+  - it: should work with different platform values (non-aws should not render)
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: azure
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should work with platform as empty string (should not render)
+    set:
+      coreApi:
+        rbac:
+          enabled: true
+        platform: ""
+    asserts:
+      - hasDocuments:
+          count: 0

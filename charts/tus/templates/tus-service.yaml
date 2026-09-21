@@ -1,0 +1,24 @@
+{{- if .Values.tus.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: tus
+  labels:
+    {{- include "tus.labels" . | nindent 4 }}
+    component: tus-server
+  annotations:
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+spec:
+  type: {{ ternary "LoadBalancer" "ClusterIP" .Values.dev_mode }}
+  {{- if .Values.dev_mode }}
+  loadBalancerIP: {{ .Values.tus.loadBalancerIP }}
+  {{- end }}
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "tus.selectorLabels" . | nindent 4 }}
+    component: tus-server
+{{- end }}

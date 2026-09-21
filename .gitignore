@@ -1,0 +1,14 @@
+# Ignore Helm dependency packages
+**/charts/*.tgz
+
+# Helm output
+rendered.yaml
+
+# Ignore common editor files
+.DS_Store
+*.swp
+*.swo
+*.bak
+
+# VSCode project settings
+.vscode/

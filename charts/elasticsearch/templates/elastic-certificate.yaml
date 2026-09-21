@@ -1,0 +1,51 @@
+{{- if eq (include "platform" .) "onprem" }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.certificates.ca.name }}
+spec:
+  isCA: true
+  duration: {{ .Values.certificates.ca.duration }}
+  renewBefore: {{ .Values.certificates.ca.renewBefore }}
+  dnsNames:
+{{- range .Values.certificates.ca.dnsNames }}
+    - {{ . }}
+{{- end }}
+  issuerRef:
+    group: {{ .Values.certificates.ca.issuerRef.group }}
+    kind: {{ .Values.certificates.ca.issuerRef.kind }}
+    name: {{ .Values.certificates.ca.issuerRef.name }}
+  secretName: {{ .Values.certificates.ca.secretName }}
+  commonName: {{ .Values.certificates.ca.commonName }}
+  privateKey:
+    algorithm: {{ .Values.certificates.ca.privateKey.algorithm }}
+    size: {{ .Values.certificates.ca.privateKey.size }}
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.certificates.name }}
+spec:
+  duration: {{ .Values.certificates.duration }}
+  renewBefore: {{ .Values.certificates.renewBefore }}
+  secretName: {{ .Values.certificates.secretName }}
+  isCA: {{ .Values.certificates.isCA }}
+  dnsNames:
+{{- range .Values.certificates.dnsNames }}
+    - {{ . }}
+{{- end }}
+  subject:
+    organizations:
+{{- range .Values.certificates.subject.organizations }}
+      - {{ . }}
+{{- end }}
+  privateKey:
+    algorithm: {{ .Values.certificates.privateKey.algorithm }}
+    encoding: {{ .Values.certificates.privateKey.encoding }}
+    size: {{ .Values.certificates.privateKey.size }}
+  issuerRef:
+    name: {{ .Values.certificates.issuerRef.name }}
+    kind: {{ .Values.certificates.issuerRef.kind }}
+{{- end }}

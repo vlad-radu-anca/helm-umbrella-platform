@@ -1,0 +1,48 @@
+name: Helm Linter
+
+on:
+  workflow_call:
+    inputs:
+      charts:
+        description: 'JSON array of chart names to process'
+        required: false
+        type: string
+        default: '[]'
+
+jobs:
+  helm-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v5.0.1
+
+      - name: Set charts variable
+        id: set-charts
+        run: |
+          if [[ "${{ inputs.charts }}" != "[]" ]]; then
+            echo "charts=${{ inputs.charts }}" >> "$GITHUB_OUTPUT"
+            echo "✅ Processing charts from input: ${{ inputs.charts }}"
+          else
+            echo "charts=${{ steps.detect-charts.outputs.charts }}" >> "$GITHUB_OUTPUT"
+            echo "✅ Processing charts from detection: ${{ steps.detect-charts.outputs.charts }}"
+          fi
+      - name: Lint Helm Charts
+        run: |
+          CHARTS_JSON="${{ steps.set-charts.outputs.charts }}"
+
+          if [[ -z "$CHARTS_JSON" || "$CHARTS_JSON" == "[]" ]]; then
+            echo "⚠️ No charts to lint."
+            exit 0
+          fi
+
+          echo "Debug: CHARTS_JSON = $CHARTS_JSON"
+          # Handle case where JSON strings aren't properly quoted
+          FIXED_JSON=$(echo "$CHARTS_JSON" | sed 's/\[/["/' | sed 's/\]/"]/' | sed 's/,/","/g')
+          echo "Debug: FIXED_JSON = $FIXED_JSON"
+          printf '%s\n' "$FIXED_JSON" | jq -r '.[]' | while read -r CHART; do
+            echo "🔍 Linting charts/$CHART"
+            helm lint "charts/$CHART" || echo "::warning file=charts/$CHART::Helm lint warning"
+          done

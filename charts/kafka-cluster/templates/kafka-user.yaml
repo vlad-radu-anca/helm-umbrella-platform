@@ -1,0 +1,12 @@
+{{-  if and (eq .Values.kafkaCluster.enabled true) (eq .Values.kafkaCluster.externalAccess.enabled true) (ne .Values.kafkaCluster.externalAccess.auth nil )}}
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaUser
+metadata:
+  name: {{ .Values.kafkaCluster.clusterName }}-external-user
+  namespace: {{ .Values.kafkaCluster.namespace }}
+  labels:
+    strimzi.io/cluster: {{ .Values.kafkaCluster.clusterName }}
+spec:
+  authentication:
+    type: {{ .Values.kafkaCluster.externalAccess.auth }}
+{{- end }}

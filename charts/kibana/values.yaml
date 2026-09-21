@@ -1,0 +1,96 @@
+kibana:
+  endpoint: ems.example.local
+  elasticsearchFullname: ""
+  image: docker.elastic.co/kibana/kibana
+  tag: "7.17.29"
+  pullPolicy: Always
+  replicaCount: 1
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 5601
+  
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations: {}
+    hosts:
+    - host: kibana.devems122.example.local
+      paths:
+      - path: /
+        pathType: ImplementationSpecific
+    tls:
+    - secretName: kibana-tls-secret
+      hosts:
+      - kibana.devems122.example.local
+  
+  resources:
+    limits:
+      cpu: 750m
+      memory: 1000Mi
+    requests:
+      cpu: 100m
+      memory: 500Mi
+  
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-small
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+  job:
+    image: ghcr.io/vlad-radu-anca/kibana-job
+    tag: "3.2"
+    pullPolicy: Always
+    spec:
+      ttlSecondsAfterFinished: 1800
+    initContainers:
+        image: curlimages/curl:7.84.0
+    restartPolicy: Never
+  
+  elastic_host: elastic
+  elastic_port: "9200"
+  wait_for_host: elastic
+  wait_for_port: "9200"
+  elastic_url: http://elastic:9200
+  elastic_auth: 'Authorization: Basic ZWxhc3RpYzplbGFzdGljUGFzcw=='
+  elasticsearch_host: http://elastic:9200
+  elastic_password: elasticPass
+  elastic_username: elastic
+  elasticsearch_password: elasticPass
+  elasticsearch_username: elastic
+  waitforit_auth: 'Authorization: Basic ZWxhc3RpYzplbGFzdGljUGFzcw=='
+  kibana_host: kibana
+  kibana_host_and_port: kibana:5601
+  kibana_port: "5601"
+  waitfor_url: http://kibana:5601/login
+  secrets:
+    internal_elastic_admin_client: "ems-platform_internal_elastic_admin_client_xlv"
+
+curlImage:
+  repo: curlimages/curl
+  tag: 8.12.1
+
+ConnectionUrls:
+  elastic: http://elastic:9200
+  
+certificate:
+  isCA: true
+  duration: 8760h
+  renewBefore: 168h
+  subject:
+    organizations:
+      - ems-platform
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+  commonName: my-selfsigned-ca
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048

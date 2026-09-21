@@ -1,0 +1,217 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+  name: elastic
+spec:
+  replicas: {{ .Values.elasticsearch.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "elasticsearch.selectorLabels" . | nindent 6 }}
+  serviceName: elastic-headless
+  template:
+    metadata:
+      {{- with .Values.elasticsearch.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "elasticsearch.selectorLabels" . | nindent 8 }}
+      name: elastic
+    spec:
+      {{- if eq (include "platform" .) "aws" }}
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "elasticsearch.selectorLabels" . | nindent 14 }}
+      {{- end }}
+
+      {{- with .Values.elasticsearch.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      {{- if eq (include "platform" .) "aws" }}
+        {{- with .Values.elasticsearch.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+        {{- with .Values.elasticsearch.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      
+      {{- with .Values.elasticsearch.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      {{- with .Values.elasticsearch.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      priorityClassName: {{ if eq (include "platform" .) "aws" }}ems-platform-very-high-priority{{ else }}ems-platform-high-priority{{ end }}
+
+      containers:
+        - name: elasticsearch
+          image: "{{ .Values.elasticsearch.image }}:{{ .Values.elasticsearch.tag }}"
+          imagePullPolicy: {{ .Values.elasticsearch.pullPolicy }}
+          env:
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: ES_JAVA_OPTS
+              value: {{ .Values.elasticsearch.elastic_java_options }}
+            - name: ELASTIC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client
+                  {{- end }}
+                  key: elk-username
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client 
+                  {{- end }}
+                  key: elk-password
+            - name: ELASTICSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client
+                  {{- end }}
+                  key: elk-username
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client 
+                  {{- end }}
+                  key: elk-password
+          envFrom:
+            - configMapRef:
+                name: elastic-host-env
+          ports:
+            - containerPort: 9200
+              name: http
+            - containerPort: 9300
+              name: transport
+          volumeMounts:
+            - mountPath: /usr/share/elasticsearch/data
+              name: elastic
+            - mountPath: /opt/elasticsearch/backup
+              name: elastic-backup
+            - mountPath: "/usr/share/elasticsearch/config/log4j2.properties"
+              name: elastic-properties
+              subPath: log4j2.properties
+            - mountPath: "/usr/share/elasticsearch/config/elasticsearch.yml"
+              name: elastic-config
+              subPath: elasticsearch.yml
+            - mountPath: /usr/share/elasticsearch/config/certs
+              name: elastic-tls-secret
+          {{- if eq (include "platform" .) "aws" }}
+            - name: elastic-admin-client-secrets
+              mountPath: "/opt/ems-platform/config/elastic"
+              readOnly: true
+          {{- end }}
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.elasticsearch.startupProbe.port }}
+            periodSeconds: {{ .Values.elasticsearch.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.elasticsearch.startupProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.elasticsearch.startupProbe.successThreshold }}
+            failureThreshold: {{ .Values.elasticsearch.startupProbe.failureThreshold }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.elasticsearch.readinessProbe.port }}
+            failureThreshold: {{ .Values.elasticsearch.readinessProbe.failureThreshold }}
+            periodSeconds: {{ .Values.elasticsearch.readinessProbe.periodSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.elasticsearch.livenessProbe.port }}
+            failureThreshold: {{ .Values.elasticsearch.livenessProbe.failureThreshold }}
+            periodSeconds: {{ .Values.elasticsearch.livenessProbe.periodSeconds }}
+          resources:
+            {{- toYaml .Values.elasticsearch.resources | nindent 12 }}
+          securityContext:
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+
+      initContainers:
+        - name: configure-sysctl
+          command: ["sysctl", "-w", "vm.max_map_count={{ .Values.sysctlSettings.vmMaxMapCount }}"]
+          image: "{{ .Values.elasticsearch.image }}:{{ .Values.elasticsearch.tag }}"
+          imagePullPolicy: {{ .Values.elasticsearch.pullPolicy }}
+          securityContext:
+            privileged: true
+            runAsUser: 0 # init container — intentionally runs as root
+
+      restartPolicy: Always
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+
+      volumes:
+        - name: elastic-properties
+          configMap:
+            name: elastic-properties
+            defaultMode: 0744
+        - name: elastic-config
+          configMap:
+            name: elastic-config
+            defaultMode: 0744
+        - name: elastic-tls-secret
+          secret:
+            secretName: elastic-tls-secret
+        - name: elastic-backup
+          persistentVolumeClaim:
+            claimName: elastic-backup
+        {{- if eq (include "platform" .) "aws" }}
+        - name: elastic-admin-client-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.elastic.internal_elastic_admin_client | replace "_" "-" }}"
+        {{- end }}
+
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: elastic
+        {{- if eq (include "platform" .) "onprem" }}
+        annotations:
+          volumeType: local
+        {{- end }}
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: {{ .Values.elasticsearch.persistent_size }}
+        volumeMode: Filesystem
+        {{- if eq (include "platform" .) "aws" }}
+        storageClassName: ebs-csi-encrypted-gp3
+        {{- end }}

@@ -1,0 +1,30 @@
+name: Helm-release
+
+on:
+  push:
+    tags: 
+      - '*'
+    branches:
+      - 'singlenode'
+      - 'multinode'
+      - 'demo'
+      - 'dev'
+      - 'singlenode-prod'
+      - 'multinode-prod'
+      - 'demo-prod'
+
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Publish Helm charts
+        uses: stefanprodan/helm-gh-pages@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          linting: off
+          charts_dir: ..

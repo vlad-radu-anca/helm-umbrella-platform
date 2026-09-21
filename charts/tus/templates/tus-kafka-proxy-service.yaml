@@ -1,0 +1,18 @@
+{{- if .Values.tus.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: tus-kafka-proxy
+  labels:
+    {{- include "tus.labels" . | nindent 4 }}
+    app: tus-kafka-proxy
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  selector:
+    {{- include "tus.selectorLabels" . | nindent 4 }}
+    app: tus-kafka-proxy
+{{- end }}

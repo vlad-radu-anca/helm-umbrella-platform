@@ -1,0 +1,66 @@
+{{- if .Values.cts.smallcell_support.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cts-application-config
+data:
+  application.yaml: |
+    app:
+      name: "cts"
+      port: 7701
+      baseUrl: http://localhost
+      internalHost: cts-headless:7701
+      devMode: {{ .Values.dev_mode | default false }}
+      rateLimit:
+        maxRequests: 100
+        expiration: 10 # time in seconds
+
+    swagger:
+      generate: false
+
+    mongoClient:
+      {{- if eq (include "platform" .) "aws" }}
+      uri: "{{ .Values.cts.ConnectionUrls.mongo.aws.uri }}"
+      {{- else }}
+      uri: "{{ .Values.cts.ConnectionUrls.mongo.onprem.uri }}"
+      authSource: tocdb
+      {{- end }}
+      database: {{ .Values.cts.dbs.mongo.name }}
+      connectionTimeout: 30
+      socketTimeout: 10
+      serverSelection: 30
+      minPoolSize: 1
+      maxPoolSize: 20
+      heartBeatInterval: 10
+      retryWrites: true
+
+    logger:
+      logLevel: "DEBUG"
+
+    fiber:
+      enablePrintRoutes: true
+
+    rbacDb:
+      host: {{ .Values.cts.ConnectionUrls.pgDb.host }}
+      port: {{ .Values.cts.ConnectionUrls.pgDb.port }}
+      connectionTimeout: 30
+      dbName: rbac_defaulttenant
+
+    tocApp:
+      name: "toc"
+      baseUrl: "toc-headless"
+      port: 7001
+
+    elasticClient:
+      addresses:
+        - {{ .Values.cts.ConnectionUrls.elastic }}
+      connectionTimeout: 30
+
+    keycloakClient:
+      url: "{{- if eq .Values.platform "aws" -}}{{ .Values.cts.ConnectionUrls.keycloak.aws }}/{{- else -}}{{ .Values.cts.ConnectionUrls.keycloak.onprem }}/{{- end }}"
+      realmId: "DefaultTenant"
+      clientName: "toc"
+      clientSecret: {{ .Values.cts.keycloak.clientSecret  }}
+      executeActionsEmailLifespan: 43200
+{{- end }}

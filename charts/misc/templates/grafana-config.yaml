@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-host
+data:
+  GRAFANA_HOST: "{{ .Values.grafana.host }}"
+  GRAFANA_PORT: "{{ .Values.grafana.port }}"
+  GRAFANA_URL: "{{ printf "http://%s:%s" .Values.grafana.host .Values.grafana.port }}"
+  WAITFORIT_URL: "{{ printf "http://%s:%s" .Values.grafana.host .Values.grafana.port }}"

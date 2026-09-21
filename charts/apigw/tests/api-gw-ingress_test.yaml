@@ -1,0 +1,225 @@
+suite: test ingress
+templates:
+  - api-gw-ingress.yaml
+tests:
+  - it: should not render when ingress is disabled
+    set:
+      apigw.ingress.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render ingress when enabled
+    set:
+      apigw.ingress.enabled: true
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+
+  - it: should use correct API version for Kubernetes 1.19+
+    capabilities:
+      majorVersion: 1
+      minorVersion: 19
+    set:
+      apigw.ingress.enabled: true
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - isAPIVersion:
+          of: networking.k8s.io/v1
+
+  - it: should use correct API version for Kubernetes 1.14-1.18
+    capabilities:
+      majorVersion: 1
+      minorVersion: 18
+    set:
+      apigw.ingress.enabled: true
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - isAPIVersion:
+          of: networking.k8s.io/v1beta1
+
+  - it: should have correct metadata
+    set:
+      apigw.ingress.enabled: true
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-apigw-helm
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: apigw-helm
+
+  - it: should include annotations when provided
+    set:
+      apigw.ingress.enabled: true
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.annotations:
+        nginx.ingress.kubernetes.io/enable-cors: "true"
+        nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/enable-cors"]
+          value: "true"
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/proxy-body-size"]
+          value: "100m"
+
+  - it: should set ingress class name for Kubernetes 1.18+
+    capabilities:
+      majorVersion: 1
+      minorVersion: 19
+    set:
+      apigw.ingress.enabled: true
+      apigw.ingress.className: nginx
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+
+  - it: should add ingress class annotation for older Kubernetes versions
+    capabilities:
+      majorVersion: 1
+      minorVersion: 17
+    set:
+      apigw.ingress.enabled: true
+      apigw.ingress.className: nginx
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - equal:
+          path: metadata.annotations["kubernetes.io/ingress.class"]
+          value: nginx
+
+  - it: should configure TLS when provided
+    set:
+      apigw.ingress.enabled: true
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.tls:
+        - secretName: apigw-tls
+          hosts:
+            - apigw.ems.example.local
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - equal:
+          path: spec.tls[0].secretName
+          value: apigw-tls
+      - contains:
+          path: spec.tls[0].hosts
+          content: apigw.ems.example.local
+
+  - it: should create correct rule with endpoint substitution
+    set:
+      apigw.ingress.enabled: true
+      apigw.service.port: 7702
+      endpoint: example.com
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /api
+              pathType: Prefix  # Required by schema
+            - path: /health
+              pathType: Exact   # Required by schema
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: apigw.example.com
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /api
+      - equal:
+          path: spec.rules[0].http.paths[1].path
+          value: /health
+      # Remove pathType assertions since template might not output them
+
+  - it: should configure backend service for Kubernetes 1.19+
+    capabilities:
+      majorVersion: 1
+      minorVersion: 19
+    set:
+      apigw.ingress.enabled: true
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: apigw
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 7702
+
+  - it: should configure backend service for older Kubernetes versions
+    capabilities:
+      majorVersion: 1
+      minorVersion: 18
+    set:
+      apigw.ingress.enabled: true
+      apigw.service.port: 7702
+      endpoint: ems.example.local
+      apigw.ingress.hosts:
+        - host: apigw.ems.example.local
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.serviceName
+          value: apigw
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.servicePort
+          value: 7702

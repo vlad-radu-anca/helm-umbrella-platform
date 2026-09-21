@@ -1,0 +1,160 @@
+{{- $fullname := include "sftp-server.fullname" . }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sftp-server.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "sftp-server.name" . }}
+    helm.sh/chart: {{ include "sftp-server.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "sftp-server.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "sftp-server.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- if .Values.sftp.vxlanController.enabled }}
+        {{ .Values.sftp.vxlanController.metadataKey }}: "true"
+        {{- end }}
+      annotations:
+        {{- if .Values.sftp.vxlanController.enabled }}
+        {{ .Values.sftp.vxlanController.annotationKey }}: | 
+          {{ .Values.sftp.vxlanController.network }}
+            {{ if .Values.sftp.vxlanController.ip -}} ip= {{- .Values.sftp.vxlanController.ip }} {{- end}}
+            {{ if .Values.sftp.vxlanController.route -}} route= {{- .Values.sftp.vxlanController.route }} {{- end}}
+        {{- end }}
+    spec:
+      initContainers:
+      {{- if .Values.sftp.vxlanController.enabled }}
+      - name: vxlan-controller-agent-init
+        image: {{ .Values.sftp.vxlanController.image.repository }}:{{ .Values.sftp.vxlanController.image.tag }}
+        imagePullPolicy: {{ .Values.sftp.vxlanController.image.pullPolicy  | quote }}
+        resources:
+{{ toYaml .Values.sftp.vxlanController.resources | indent 10 }}
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN"]
+      {{- end }}
+      priorityClassName: ems-platform-medium-priority
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.sftp.image.repository }}:{{ .Values.sftp.image.tag }}"
+          imagePullPolicy: {{ .Values.sftp.image.pullPolicy }}
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          ports:
+            - name: ssh
+              containerPort: 22
+              protocol: TCP
+          volumeMounts:
+            - name: sftp-config
+              mountPath: /etc/sftp/
+            {{- if .Values.sftp.persistentVolume.enabled }}
+            {{- range $user := .Values.sftp.sftpConfig.users }}
+            # - name: data-users
+            #   mountPath: /home/data
+            - name: data
+              mountPath: {{ $user.mountPath }}
+              {{- if $user.subPath }}
+              subPath: "{{ $user.subPath }}"
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- range $user := .Values.sftp.sftpConfig.users }}
+            {{- if $user.authorizedKeys }}
+            - name: authorized-keys-{{ $user.username }}
+              mountPath: /home/{{ $user.username }}/.ssh/keys/
+            {{- end }}
+            {{- end }}
+            {{- if .Values.sftp.sftpConfig.hostKeys }}
+            {{- range .Values.sftp.sftpConfig.hostKeys.keys }}
+            - name: ssh-host-keys
+              mountPath: /etc/ssh/{{ . }}
+              subPath: {{ . }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.sftp.init.enabled }}
+            - name: init-script
+              mountPath: /etc/sftp.d/init.sh
+              subPath: init.sh
+            {{- end }}
+          resources:
+            {{- toYaml .Values.sftp.resources.sftp | nindent 12 }}
+        {{- if .Values.sftp.debug.enabled }}
+        - name: debug
+          image: {{ .Values.sftp.debug.image.repository }}:{{ .Values.sftp.debug.image.tag }}
+          imagePullPolicy: {{ .Values.sftp.debug.image.pullPolicy | quote }}
+          resources:
+  {{ toYaml .Values.sftp.resources.debug | indent 10 }}
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          command:
+          - sh
+          - -c
+          - "trap : TERM INT; (while true; do sleep 1000; done) & wait"
+        {{- end }}
+        {{- if .Values.sftp.vxlanController.enabled }}
+        - name: vxlan-controller-agent
+          image: {{ .Values.sftp.vxlanController.image.repository }}:{{ .Values.sftp.vxlanController.image.tag }}
+          imagePullPolicy: {{ .Values.sftp.vxlanController.image.pullPolicy | quote }}
+          resources:
+            {{- toYaml .Values.sftp.vxlanController.resources | nindent 12 }}
+          securityContext:
+            capabilities:
+              add:
+              - NET_ADMIN
+        {{- end }}
+      volumes:
+      - name: sftp-config
+        configMap:
+          name: {{ include "sftp-server.fullname" . }}-users
+      {{- range $user := .Values.sftp.sftpConfig.users }}
+      {{- if $user.authorizedKeys }}
+      - name: authorized-keys-{{ $user.username }}
+        configMap:
+          name: {{ $fullname }}-{{ $user.username }}-authorized-keys
+      {{- end }}
+      {{- end }}
+      {{- if .Values.sftp.sftpConfig.hostKeys }}
+      - name: ssh-host-keys
+        secret:
+          secretName: {{ .Values.sftp.sftpConfig.hostKeys.secret }}
+          defaultMode: 384
+      {{- end }}
+      {{- if .Values.sftp.persistentVolume.enabled }}
+      {{- if .Values.sftp.init.enabled }}
+      - name: init-script
+        configMap:
+          name: {{ include "sftp-server.fullname" . }}-init
+          defaultMode: 0775
+      {{- end }}
+      # - name: data-users
+      #   persistentVolumeClaim:
+      #     claimName: data-users
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ if .Values.sftp.persistentVolume.existingClaim }}{{ .Values.sftp.persistentVolume.existingClaim }}{{- else }}{{ template "sftp-server.fullname" . }}-data{{- end }}
+      {{- end }}
+      {{- with .Values.sftp.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.sftp.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.sftp.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

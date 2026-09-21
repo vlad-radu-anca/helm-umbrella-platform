@@ -1,0 +1,64 @@
+{{- if .Values.smallcellSupport.enabled }}
+---
+apiVersion: v1
+data:
+  application.yaml: |
+    settings:
+      loadFileIntoPostgres: true
+      loadRealm: true
+      realmRepresentationFileName: "realm-representation.json"
+      rolePermissionFileName: "role-permissions.json"
+      devMode: {{ .Values.devMode }}
+      useLocalFrontendUrl: false
+      globalEndpoint: "{{ .Values.endpoint }}"
+      globalEmsUiSubdomain: "{{ .Values.emsuiSubdomain }}"
+      brandName: "{{ .Values.brandName }}"
+      permissionVersion: "5.0"
+
+    rbacDB:
+      host: "{{ .Values.ConnectionUrls.pgDb.host }}"
+      port: {{ .Values.ConnectionUrls.pgDb.port }}
+      connectTimeout: 30
+
+    keycloak:
+      url: "{{ .Values.ConnectionUrls.keycloak }}/"
+      realmId: "DefaultTenant"
+      clients:
+        emsui:
+          redirectUris:
+            - "*"
+            {{- if .Values.devMode }}
+            - "http://localhost:9093/*"
+            {{- end }}
+        emsHelpCenter:
+          redirectUris:
+            - "auth/*"
+            - "https://help-center.{{ .Values.endpoint }}/*"
+            {{- if .Values.devMode }}
+            - "http://localhost:42001/*"
+            {{- end }}
+        ems:
+          redirectUris:
+            - "*"
+            - "https://swagger.{{ .Values.endpoint }}/oauth2/*"
+            {{- if .Values.devMode }}
+            - "http://localhost:9093/*"
+            {{- end }}
+
+    emailConfig:
+      senderEmail: {{ .Values.smtp.senderEmail }}
+      envelopFrom: {{ .Values.smtp.envelopFrom }}
+      smtp:
+        host: {{ .Values.smtp.server }}
+        port: {{ .Values.smtp.port }}
+        ssl: {{ .Values.smtp.ssl }}
+        startTls: {{ .Values.smtp.startTls }}
+        auth: {{ .Values.smtp.auth }}
+        authType: {{ .Values.smtp.authType }}
+        tokenUrl: {{ .Values.smtp.tokenUrl }}
+        scope: {{ .Values.smtp.scope }}
+        debug: {{ .Values.smtp.debug }}
+kind: ConfigMap
+metadata:
+  name: init-client-application-config
+{{- end }}

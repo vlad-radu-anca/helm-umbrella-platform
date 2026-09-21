@@ -1,0 +1,19 @@
+{{- if .Values.emshelpcenter.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ems-help-center-pvc
+  {{- if eq (include "platform" .) "aws" }}
+  labels:
+    app.kubernetes.io/name: ems-help-center
+  {{- end }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if eq (include "platform" .) "aws" }}
+  storageClassName: ebs-csi-encrypted-gp3
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.emshelpcenter.storage.size | default "5Gi" }}
+{{- end }}

@@ -1,0 +1,13 @@
+{{- if eq (include "platform" .) "onprem" }}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.elasticsearch.priorityClass.name | default "ems-platform-high-priority" }}
+  {{- with .Values.elasticsearch.priorityClass.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+value: {{ .Values.elasticsearch.priorityClass.value | default 100000 }}
+globalDefault: {{ .Values.elasticsearch.priorityClass.globalDefault | default false }}
+description: {{ .Values.elasticsearch.priorityClass.description | default "High priority for elasticsearch" }}
+{{- end }}

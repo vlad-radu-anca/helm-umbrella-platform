@@ -1,0 +1,17 @@
+{{- if .Values.topicOperator.kafkaCluster.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: strimzi-topic-operator
+  namespace: ems-platform
+  labels:
+    app: {{ .Values.topicOperator.name | default "strimzi-topic-operator" }}
+spec:
+  selector:
+    {{- include "topicOperator.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: {{ .Values.topicOperator.readinessPort | default 8080 }}
+{{- end }}

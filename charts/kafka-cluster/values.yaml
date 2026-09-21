@@ -1,0 +1,113 @@
+platform: onprem #or aws
+kafkaTopic:
+  enabled: true
+  namespace: kafka
+  cluster: ems-platform-kafka-cluster
+  prefix: ems-platform
+  installOperator: false  
+  defaultConfig:
+    partitions: 3
+    replicas: 2
+    retentionMs: 43200000
+    segmentBytes: 524288000
+    cleanupPolicy: delete
+    maxMessageBytes: 1048576
+    compressionType: gzip
+  topics:
+    - name: pm-kpis
+    - name: cm-events
+    - name: fm-events
+    - name: fm-alarms
+    - name: security-secretchange
+    - name: invgnb-events
+    - name: tus-file-uploaded
+    - name: tus-file-uploaded-notification
+    - name: ems-platform-ec-errors
+
+
+kafkaCluster:
+  enabled: true
+  externalAccess: 
+    enabled: false
+    type: nlb
+#    port: 9094
+#    internet: false
+#    auth: tls
+#    san: 
+#    - kafka-bootstrap.pvems.example.com
+    annotations:
+#      external-dns.alpha.kubernetes.io/hostname: "kafka-bootstrap.pvems.example.com"
+  # Metadata##
+  namespace: kafka
+  clusterName: ems-platform-kafka-cluster
+
+  # Node Pool (KafkaNodePool)
+  nodePool:
+    name: ems-platform-kafka-controller-broker
+    roles:
+      - controller
+      - broker
+    storage:
+      type: jbod
+      volumes:
+        - id: 0
+          type: persistent-claim
+          size: 50Gi
+          deleteClaim: false
+          kraftMetadata: shared
+
+  # Kafka CR
+  kafkaVersion: 3.9.0
+  replicaCount: 3
+
+  transaction:
+    minIsr: 2
+
+  config:
+    offsetsReplicationFactor: 3
+    transactionLogReplicationFactor: 3
+    defaultReplicationFactor: 3
+    minInsyncReplicas: 3
+    interBrokerProtocolVersion: "3.9"
+
+  # Metrics ConfigMap
+  metrics:
+    enabled: true
+    configMapName: kafka-metrics
+    configMapKey: kafka-metrics-config.yml
+
+  # Resource Requests & Limits
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+
+  # Pod Template Customizations
+  template:
+    metadata: {}  # optional labels or annotations
+    securityContext: {}  # optional pod-level security context
+    priorityClassName: ""  # optional
+    terminationGracePeriodSeconds: 120
+    topologySpreadConstraints: []  # optional
+    affinity: {}  # optional
+    tolerations: []  # optional
+
+  initContainers:
+    curlImage:
+      repo: curlimages/curl
+      tag: 8.12.1
+    busyboxImage:
+      repo: busybox
+      tag: 1.36.1
+
+  topicHook:
+    jobName: wait-for-topic-operator
+    containerName: check-topic-operator
+    readinessProbeURL: http://strimzi-topic-operator.ems-platform.svc.cluster.local:8080/ready
+    hook: post-install
+    hookWeight: 1
+    hookDeletePolicy: hook-succeeded
+    restartPolicy: OnFailure

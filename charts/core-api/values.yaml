@@ -1,0 +1,153 @@
+platform: onprem  # or "onprem"
+
+loadBalancerIP: "0.0.0.0"
+
+endpoint: ems.example.local
+
+dev_mode: false
+
+certificate:
+  name: core-api-tls-secret
+  isCA: true
+  duration: 8760h        # 1 year
+  renewBefore: 168h      # 7 days
+  dnsNames:
+    - core-api
+  subject:
+    organizations:
+      - ems-platform
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+  secretName: core-api-tls-secret
+  commonName: my-selfsigned-ca
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+
+coreApi:
+  hpa:
+    enabled: false
+    maxReplicas: 6
+    minReplicas: 2
+    averageCpuUtilization: 95
+    # averageMemoryUtilization: 95
+  data:
+    dev_mode: false
+    diesel_java_options: '-Xms2g -Xmx2g -Xss1500k -XX:+CMSClassUnloadingEnabled -XX:+ExitOnOutOfMemoryError -XX:+UseG1GC'
+    dieselWikiHeaderXFrameOptionsValue: SAMEORIGIN
+    dieselWikiHeader: X-Frame-Options
+    cpe_support:
+      enabled: false
+    enb_support:
+      enabled: false
+    diesel_wiki_header: ""
+    sftp_ip: "0.0.0.0"
+    diesel_secret: ""  # Set via --set or CI/CD secrets
+    ems_client_secret: ""  # Set via --set or CI/CD secrets
+    TOCUrlBase: http://toc-headless:7001
+    elastic_auth: ""  # Set via --set: base64("elastic:<password>")
+    elastic_password: ""  # Set via --set or CI/CD secrets
+    elastic_username: elastic
+    elasticsearch_password: ""  # Set via --set or CI/CD secrets
+    elasticsearch_username: elastic
+  image: vlad-radu-anca/ems-core-api
+  tag: 5.0.latest
+  pullPolicy: Always
+  replicaCount: 1
+  imagePullSecrets: [name: "regcred"]
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  internal_cluster_hostname: core-api-headless
+  service:
+    type: ClusterIP
+    port: 9000
+    akka_cluster_port: 9002
+    akka_management_port: 8558
+  ingress:
+    hosts:
+    - host: ""
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-next-upstream-tries: "1"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    tls:
+      - secretName: core-api-tls-secret
+        hosts: ""
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 3150Mi
+      requests:
+        cpu: 500m
+        memory: 2750Mi
+
+    hpa:
+      enabled: false
+      maxReplicas: 6
+      minReplicas: 2
+      averageCpuUtilization: 95
+      # averageMemoryUtilization: 95
+
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform
+    onprem: {}
+    default: {}
+    tolerations: []
+    affinity: {}
+  secrets:
+    internal_keycloak_core_api_client: "ems-platform_internal_keycloak_core_api_client_xlv"
+    external_keycloak_admin_client: "ems-platform_external_keycloak_admin_client_xlv"
+    internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
+    internal_pg_client: "ems-platform_internal_pg_client_xlv"
+
+
+ConnectionUrls:
+  coreApi: http://core-api:9000
+  elastic: http://elastic:9200
+  keycloak:
+    aws: http://keycloak-headless.keycloak.svc.cluster.local:8080/auth
+    onprem: http://keycloak/auth
+  spark: http://spark:4041
+  mongo:
+    aws:
+      uri: mongodb+srv://cluster0.example.mongodb.net
+    onprem:
+      uri: mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0
+  pgDb:
+    dbname: ems-platform
+    host: postgresql-hl
+    port: 5432
+
+serviceAccount:
+  create: true
+  name: dieselserviceaccount
+
+rbac:
+  enabled: true
+  serviceAccountName: dieselserviceaccount
+  roleName: dieselrole
+  roleBindingName: dieselrolebinding
+  namespace: ems-platform
+
+initContainers:
+  curlImage:
+    repo: curlimages/curl
+    tag: 8.12.1
+  busyboxImage:
+    repo: busybox
+    tag: 1.36.1
+
+securityContext:
+  fsGroup: 1001
+  runAsUser: 1001
+  runAsGroup: 1001

@@ -1,0 +1,19 @@
+{{- if .Values.cpeSupport.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "mongo.labels" . | nindent 4 }}
+  name: mongo-headless
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 27017
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "mongo.selectorLabels" . | nindent 4 }}  
+  type: {{ .Values.service.type }}
+{{- end }}

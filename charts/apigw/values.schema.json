@@ -1,0 +1,200 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "global": {
+        "type": "object",
+        "description": "Global values passed from the umbrella chart",
+        "additionalProperties": true
+    },
+      "apigw": {
+        "type": "object",
+        "description": "API Gateway configuration",
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "Container image for API Gateway"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Image tag for the container"
+          },
+          "pullPolicy": {
+            "type": "string",
+            "enum": ["Always", "IfNotPresent", "Never"],
+            "description": "Image pull policy"
+          },
+          "replicaCount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of replicas to run"
+          },
+          "imagePullSecrets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" }
+              },
+              "required": ["name"]
+            },
+            "description": "List of image pull secrets"
+          },
+          "nameOverride": { "type": "string" },
+          "fullnameOverride": { "type": "string" },
+          "podAnnotations": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "service": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+                "description": "Kubernetes service type"
+              },
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              }
+            },
+            "required": ["type", "port"]
+          },
+          "resources": {
+            "type": "object",
+            "properties": {
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "cpu": { "type": "string" },
+                  "memory": { "type": "string" }
+                }
+              },
+              "requests": {
+                "type": "object",
+                "properties": {
+                  "cpu": { "type": "string" },
+                  "memory": { "type": "string" }
+                }
+              }
+            }
+          },
+          "autoscaling": {
+            "type": "object",
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "minReplicas": { "type": "integer", "minimum": 1 },
+              "maxReplicas": { "type": "integer", "minimum": 1 },
+              "targetCPUUtilizationPercentage": {
+                "type": "integer", "minimum": 1, "maximum": 100
+              },
+              "targetMemoryUtilizationPercentage": {
+                "type": "integer", "minimum": 1, "maximum": 100
+              }
+            }
+          },
+          "nodeSelector": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "object" },
+                { "type": "null" }
+              ]
+            }
+          },
+          "tolerations": {
+            "type": "array",
+            "items": { "type": "object" }
+          },
+          "affinity": {
+            "type": "object",
+            "description": "Pod affinity/anti-affinity rules"
+          },
+          "ingress": {
+            "type": "object",
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "className": { "type": "string" },
+              "annotations": {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+              },
+              "hosts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "host": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9.-]+$"
+                    },
+                    "paths": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": { "type": "string" },
+                          "pathType": {
+                            "type": "string",
+                            "enum": ["ImplementationSpecific", "Prefix", "Exact"]
+                          }
+                        },
+                        "required": ["path", "pathType"]
+                      }
+                    }
+                  },
+                  "required": ["host", "paths"]
+                }
+              }
+            }
+          },
+          "ConnectionUrls": {
+            "type": "object",
+            "properties": {
+              "elastic": {
+                "type": "string",
+                "format": "uri",
+                "description": "ElasticSearch connection URL"
+              }
+            }
+          },
+          "smallcell_support": {
+            "type": "object",
+            "properties": {
+              "enabled": { "type": "boolean" }
+            }
+          },
+          "initContainers": {
+            "type": "object",
+            "properties": {
+              "curlImage": {
+                "type": "object",
+                "properties": {
+                  "repo": { "type": "string" },
+                  "tag": { "type": "string" }
+                },
+                "required": ["repo", "tag"]
+              }
+            }
+          },
+          "secrets": {
+            "type": "object",
+            "properties": {
+              "internal_elastic_client": { "type": "string" }
+            }
+          }
+        },
+        "required": ["image", "tag", "pullPolicy", "replicaCount", "service"]
+      },
+      "endpoint": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9.-]+$",
+        "description": "Base domain endpoint (e.g., ems.example.local)"
+      }
+    },
+    "required": ["apigw", "endpoint"]
+  }
+  

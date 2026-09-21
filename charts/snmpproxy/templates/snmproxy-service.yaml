@@ -1,0 +1,29 @@
+{{- if .Values.enabled -}}
+{{- if .Values.enbSupport.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: snmpproxy
+  labels:
+    {{- include "snmpproxy.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.snmpproxy_trap_port }}
+      targetPort: {{ .Values.snmpproxy_trap_port }}
+      name: "snmp"
+    - port: {{ .Values.snmpproxy_notification_port }}
+      targetPort: {{ .Values.snmpproxy_notification_port }}
+      name: "snmp-1"
+    - port: {{ .Values.snmpproxy_agent_port }}
+      targetPort: {{ .Values.snmpproxy_agent_port }}
+      name: "snmp-2"
+      protocol: UDP
+    - port: 9095
+      targetPort: 9095
+      name: "snmp-3"
+  selector:
+    {{- include "snmpproxy.selectorLabels" . | nindent 4 }}
+{{- end }}
+{{- end }}

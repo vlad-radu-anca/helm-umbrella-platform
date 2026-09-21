@@ -1,0 +1,93 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-config-env
+data:
+  JVM_OPTIONS: >-
+    {{- if .Values.spark.clusteringEnabled }}
+    {{ .Values.spark.spark_jvm_options }} -Dconfig.file=/opt/spark/conf/ems-akka-application-cluster.conf
+    {{- else }}
+    {{ .Values.spark.spark_jvm_options }} -Dconfig.file=/opt/spark/conf/ems-akka-application.conf
+    {{- end }}
+  TOCUrlBase: http://toc-headless:7001
+  CTSUrlBase: http://cts-headless:7701
+  KCUrlBase: >
+    {{- if eq (include "platform" .) "onprem" }}
+    {{ .Values.spark.ConnectionUrls.onprem.keycloak }}
+    {{- else if eq (include "platform" .) "aws" }}
+    {{ .Values.spark.ConnectionUrls.aws.keycloak }}
+    {{- end }}
+  CertMgrUrlBase: http://ems-certs-mgmt-headless:7702
+  DisableTrustManager: "false"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-log-config
+data:
+  log4j2.properties: |+
+    # Set to debug or trace if log4j initialization is failing
+    status = error
+    monitorInterval=60
+
+    # Name of the configuration
+    name = ConsoleLogConfig
+
+    # Console appender configuration
+    appender.console.type = Console
+    appender.console.name = LogToConsole
+    appender.console.layout.type = PatternLayout
+    appender.console.layout.pattern = %d{MM/dd HH:mm:ss,SSS} %highlight{%level}{FATAL=bg_red,ERROR=red, WARN=yellow, INFO=green, DEBUG=blue, TRACE=white} [%-15.15t] %c{4} [%4L]: %m%n
+
+    rootLogger.level = INFO
+    rootLogger.appenderRefs = stdout
+    rootLogger.appenderRef.stdout.ref = LogToConsole
+
+    logger.netty.name = io.netty
+    logger.netty.level = INFO
+
+    logger.sshd.name = org.apache.sshd
+    logger.sshd.level = INFO
+
+    logger.netconf.name = org.broadband_forum.obbaa.netconf
+    logger.netconf.level = INFO
+
+    logger.netconfapiclient.name = org.broadband_forum.obbaa.netconf.api.client
+    logger.netconfapiclient.level = INFO
+
+    logger.netconfapicodec.name = org.broadband_forum.obbaa.netconf.api.codec.v2
+    logger.netconfapicodec.level = INFO
+
+    logger.ems.name = ems.platform
+    logger.ems.level = DEBUG
+
+    logger.emsCPE.name = ems.ems.collector.cpe
+    logger.emsCPE.level = WARN
+
+    logger.emsENB.name = ems.ems.collector.enb
+    logger.emsENB.level = WARN
+
+    logger.emsES.name = ems.ems.collector.cpe.AcsElkSender
+    logger.emsES.level = TRACE
+
+    logger.emsSmallCell.name = ems.ems.collector.smallcell
+    logger.emsSmallCell.level = TRACE
+
+    logger.emsSmallCellFM.name = ems.ems.collector.smallcell.fm
+    logger.emsSmallCellFM.level = TRACE
+
+    logger.emsSmallCellPM.name = ems.ems.collector.smallcell.pm
+    logger.emsSmallCellPM.level = TRACE
+
+    logger.emsTOC.name = ems.ems.collector.toc
+    logger.emsTOC.level = TRACE
+
+    logger.emsSPC.name = ems.ems.collector.spc
+    logger.emsSPC.level = TRACE
+
+    logger.emsDisc.name = ems.ems.discovery
+    logger.emsDisc.level = WARN
+
+    logger.emsEvents.name = ems.ems.eventstream
+    logger.emsEvents.level = TRACE

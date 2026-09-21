@@ -1,0 +1,106 @@
+{{- if .Values.topicOperator.kafkaCluster.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.topicOperator.name | default "strimzi-topic-operator" }}
+  labels:
+    {{- include "topicOperator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.topicOperator.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "topicOperator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "topicOperator.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.topicOperator.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.topicOperator.serviceAccountName | default "strimzi-topic-operator" }}
+      volumes:
+        - name: strimzi-tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ .Values.topicOperator.tmpSizeLimit | default "5Mi" }}
+      initContainers:
+        - name: wait-for-kafka
+          image: {{ .Values.topicOperator.initContainers.busyboxImage.repo | default "busybox" }}:{{ .Values.topicOperator.initContainers.busyboxImage.tag | default "1.36.0" }}
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Kafka bootstrap service to be ready..."
+              until nc -z {{ .Values.topicOperator.kafkaBootstrapServers }} 9092; do
+                echo "Kafka bootstrap service is not ready yet. Retrying in 5 seconds..."
+                sleep 5
+              done
+              echo "Kafka bootstrap service is ready!"
+      containers:
+        - name: {{ .Values.topicOperator.containerName | default "strimzi-topic-operator" }}
+          image: {{ .Values.topicOperator.image | default "quay.io/strimzi/operator:0.45.0" }}
+          args:
+            - {{ .Values.topicOperator.runCommand | default "/opt/strimzi/bin/topic_operator_run.sh" }}
+          volumeMounts:
+            - name: strimzi-tmp
+              mountPath: /tmp
+          env:
+            - name: STRIMZI_RESOURCE_LABELS
+              value: "{{ .Values.topicOperator.resourceLabels }}"
+            - name: STRIMZI_KAFKA_BOOTSTRAP_SERVERS
+              value: "{{ .Values.topicOperator.kafkaBootstrapServers }}"
+            - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
+              value: "{{ .Values.topicOperator.fullReconciliationIntervalMs }}"
+            - name: STRIMZI_LOG_LEVEL
+              value: "{{ .Values.topicOperator.logLevel }}"
+            - name: STRIMZI_TLS_ENABLED
+              value: "{{ .Values.topicOperator.tlsEnabled }}"
+            - name: STRIMZI_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          livenessProbe:
+            httpGet:
+              path: /healthy
+              port: {{ .Values.topicOperator.livenessPort | default 8080 }}
+            initialDelaySeconds: {{ .Values.topicOperator.livenessInitialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.topicOperator.livenessPeriodSeconds | default 30 }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.topicOperator.readinessPort | default 8080 }}
+            initialDelaySeconds: {{ .Values.topicOperator.readinessInitialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.topicOperator.readinessPeriodSeconds | default 30 }}
+          resources:
+            {{- toYaml .Values.topicOperator.resources | nindent 12 }}
+      restartPolicy: Always
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.topicOperator.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.topicOperator.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.topicOperator.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.topicOperator.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topicOperator.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  strategy:
+    type: {{ .Values.topicOperator.strategyType | default "Recreate" }}
+{{- end }}

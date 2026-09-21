@@ -1,0 +1,87 @@
+{{- if and .Values.toc.loadUsers .Values.toc.smallcell_support.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: toc-configure-job
+  labels:
+    component: toc-configure-job
+spec:
+  ttlSecondsAfterFinished: 1800
+  template:
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      {{- if eq (include "platform" .) "aws" }}
+      serviceAccountName: {{ .Values.toc.serviceAccountName | default "secrets-store-csi-driver-terraform" }}
+      {{- end }}
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.toc.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.toc.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.toc.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-toc
+          image: {{ .Values.toc.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.toc.initContainers.curlImage.tag | default "8.12.1" }}
+          command: [ "/bin/sh", "-c" ]
+          args:
+            - "while [[ $(curl -sIw '%{http_code}' http://toc-headless:7001/health -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the toc to be ready...'; done; echo 'Connection with toc established'"
+      restartPolicy: Never
+      containers:
+        - name: toc-configure-job
+          image: {{ .Values.toc.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.toc.initContainers.curlImage.tag | default "8.12.1" }}
+          imagePullPolicy: Always
+          workingDir: /tmp/toc-init-job
+          command: [ "/bin/sh", "toc-init.sh" ]
+          volumeMounts:
+            - name: ems-aoa-secrets
+              mountPath: "/opt/ems-platform/config/users"
+              readOnly: true
+            - mountPath: /tmp/toc-init-job
+              name: toc-init-job
+          resources:
+            limits:
+              memory: "250Mi"
+              cpu: "500m"
+        - name: import-regions
+          image: "{{ .Values.toc.import_regions.image }}:{{ .Values.toc.import_regions.tag }}"
+          imagePullPolicy: {{ .Values.toc.import_regions.pullPolicy }}
+          command: [ "/bin/sh", "-c" ]
+          args:
+            - /data/upload-regions.sh
+          resources:
+            limits:
+              {{- if eq (include "platform" .) "onprem" }}
+              memory: "500Mi"
+              cpu: "500m"
+              {{- else if eq (include "platform" .) "aws" }}
+              memory: "1000Mi"
+              cpu: "1000m"
+              {{- end }}
+      volumes:
+        {{- if eq (include "platform" .) "onprem" }}
+        - name: ems-aoa-secrets
+          secret:
+            secretName: external-ems-aoa-client
+        {{- else if eq (include "platform" .) "aws" }}
+        - name: ems-aoa-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.toc.secrets.external_ems_aoa_client | replace "_" "-" }}"
+        {{- end }}
+        - name: toc-init-job
+          configMap:
+            name: toc-init-job
+{{- end }}

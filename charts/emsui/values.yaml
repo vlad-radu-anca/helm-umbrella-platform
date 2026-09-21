@@ -1,0 +1,108 @@
+endpoint: ems.example.local
+
+platform: onprem # or aws
+
+emsui:
+  image: vlad-radu-anca/ems-ui3
+  tag: "5.10"
+  pullPolicy: Always
+  serial_number: "EM0-0000000000"
+  replicaCount: 1
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/client-max-body-size: 400m
+      nginx.ingress.kubernetes.io/proxy-body-size: 400m
+      nginx.ingress.kubernetes.io/proxy-busy-buffers-size: 512k
+      nginx.ingress.kubernetes.io/proxy-buffers: 4 512k
+      nginx.ingress.kubernetes.io/proxy-buffer-size: 256k
+      nginx.ingress.kubernetes.io/server-snippet: |
+        location ~ ^/diesel/doe/(join|profile/join2|logout) {
+              deny all;
+              return 403;
+            }
+            location ~ ^/grafana/(login|logout) {
+              deny all;
+              return 403;
+            }
+    hosts:
+      - host: emsui.devems130.example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: emsui-tls-secret
+        hosts:
+          - emsui.devems130.example.local
+  imagePullSecrets: [name: "regcred"]
+  # Registry pull credentials rendered into the "regcred" secret on aws; supply real values via --set or a private values file
+  registryCredentials:
+    registry: https://index.docker.io/v1/
+    username: changeme
+    password: changeme
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      #cpu: 1000m
+      memory: 1000Mi
+    requests:
+      cpu: 500m
+      memory: 128Mi
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-small
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+  subdomain: "emsui"
+  cpe_support:
+    enabled: false
+  BRAND_NAME: "ems-platform"
+  enb_support:
+    enabled: false
+  spc_support:
+    enabled: true
+  smallcell_support: # small cell 5g support
+    enabled: true
+
+initContainers:
+  curlImage:
+    repo: curlimages/curl
+    tag: 8.12.1
+  busyboxImage:
+    repo: busybox
+    tag: 1.36.1
+
+ConnectionUrls:
+  keycloak: 
+    onprem: http://keycloak/auth
+    aws: http://keycloak-headless.keycloak.svc.cluster.local:8080/auth
+  elastic: http://elastic:9200
+  spark: http://spark:4041
+  coreApi: http://core-api:9000
+  certsmgmt: http://ems-certs-mgmt:7702
+
+emsui_subdomain: "ui"
+certificate:
+  isCA: true
+  duration: 8760h
+  renewBefore: 168h
+  subject:
+    organizations:
+      - ems-platform
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+  commonName: my-selfsigned-ca
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048

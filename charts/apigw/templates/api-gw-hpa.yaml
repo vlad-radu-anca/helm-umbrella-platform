@@ -1,0 +1,37 @@
+{{- if .Values.apigw.smallcell_support.enabled }}
+{{- if .Values.apigw.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "apigw.fullname" . }}
+  labels:
+    app: {{ template "apigw.name" . }}
+    chart: {{ template "apigw.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: apigw
+  minReplicas: {{ .Values.apigw.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.apigw.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.apigw.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.apigw.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.apigw.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.apigw.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+{{- end }}

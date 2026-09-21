@@ -1,0 +1,58 @@
+suite: Kafka Topic Tests
+templates:
+  - templates/kafka-topics.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should render 6 KafkaTopics
+    asserts:
+      - hasDocuments:
+          count: 6
+
+  - it: should render topic "core-api-pm-kpis"
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api-pm-kpis
+      - equal:
+          path: spec.partitions
+          value: 3
+      - equal:
+          path: spec.replicas
+          value: 2
+
+  - it: should render topic "core-api-cm-events"
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api-cm-events
+
+  - it: should render topic "core-api-fm-events"
+    documentIndex: 2
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api-fm-events
+
+  - it: should render topic "core-api-fm-alarms"
+    documentIndex: 3
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api-fm-alarms
+
+  - it: should render topic "core-api-security-secretchange"
+    documentIndex: 4
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api-security-secretchange
+
+  - it: should render topic "core-api-invgnb-events"
+    documentIndex: 5
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api-invgnb-events

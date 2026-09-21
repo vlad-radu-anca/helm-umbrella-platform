@@ -1,0 +1,129 @@
+suite: test configmap
+templates:
+  - api-gw-config.yaml
+tests:
+  - it: should not render when smallcell_support is disabled
+    set:
+      apigw.smallcell_support.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render configmap when smallcell_support is enabled
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: apigw-application-config
+
+  - it: should contain application.yaml data
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.ConnectionUrls.elastic: "http://elastic:9200"
+    asserts:
+      - exists:
+          path: data["application.yaml"]
+
+  - it: should set devMode to false for aws platform
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: aws
+      apigw.dev_mode: true
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "devMode: false"
+
+  - it: should respect dev_mode setting for non-aws platforms
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: onprem
+      apigw.dev_mode: true
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "devMode: true"
+
+  - it: should default dev_mode to false when not specified
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: onprem
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "devMode: false"
+
+  - it: should contain correct app configuration
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'name: "api_gw"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "port: 7702"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "baseUrl: http://localhost"
+
+  - it: should contain rate limit configuration
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "maxRequests: 100"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "expiration: 10"
+
+  - it: should contain logger configuration
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'logLevel: "DEBUG"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'callerLevel: "DEBUG"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'stackTraceLevel: "ERROR"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "formatJson: TRUE"
+
+  - it: should contain elastic client configuration
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.ConnectionUrls.elastic: "http://elastic:9200"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'addresses:\s+- "http://elastic:9200"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "connectionTimeout: 30"
+
+  - it: should contain fiber configuration
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "enablePrintRoutes: TRUE"
+
+  - it: should contain swagger configuration
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "generate: false"

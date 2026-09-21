@@ -1,0 +1,521 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "EMS Cert Manager Helm Chart Values Schema",
+  "description": "Schema for validating values.yaml configuration for the EMS Cert Manager Helm chart",
+  "required": ["platform", "emscertmanager", "smallcell_support"],
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["aws", "onprem"],
+      "description": "Deployment platform - determines storage and secrets configuration"
+    },
+    "dev_mode": {
+      "type": "boolean",
+      "description": "Enable development mode features"
+    },
+    "emscertmanager": {
+      "type": "object",
+      "description": "EMS Certificate Manager configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable EMS Certificate Manager deployment"
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*(/[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*)*$",
+          "description": "Docker image repository and name"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Docker image tag"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "Never", "IfNotPresent"],
+          "description": "Image pull policy"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Number of replicas for the deployment"
+        },
+        "imagePullSecrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              }
+            },
+            "required": ["name"]
+          },
+          "description": "Image pull secrets for private registries"
+        },
+        "nameOverride": {
+          "type": "string",
+          "description": "Override the name of the chart"
+        },
+        "fullnameOverride": {
+          "type": "string",
+          "description": "Override the full name of the chart"
+        },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations to add to pods"
+        },
+        "service": {
+          "type": "object",
+          "required": ["type", "port"],
+          "description": "Service configuration",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"],
+              "description": "Kubernetes service type"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "description": "Service port number"
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "description": "Resource limits and requests",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^[0-9]+(m|[0-9]*\\.?[0-9]+)?$",
+                  "description": "CPU limit (e.g., 200m, 1)"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$",
+                  "description": "Memory limit (e.g., 350Mi, 1Gi)"
+                }
+              },
+              "required": ["cpu", "memory"]
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^[0-9]+(m|[0-9]*\\.?[0-9]+)?$",
+                  "description": "CPU request (e.g., 100m, 0.5)"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$",
+                  "description": "Memory request (e.g., 256Mi, 1Gi)"
+                }
+              },
+              "required": ["cpu", "memory"]
+            }
+          }
+        },
+        "autoscaling": {
+          "type": "object",
+          "description": "Horizontal Pod Autoscaler configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable HPA"
+            },
+            "minReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Minimum number of replicas"
+            },
+            "maxReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Maximum number of replicas"
+            },
+            "targetCPUUtilizationPercentage": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Target average CPU utilization percentage"
+            },
+            "targetMemoryUtilizationPercentage": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Target average memory utilization percentage"
+            }
+          }
+        },
+          "nodeSelector": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "object" },
+                { "type": "null" }
+              ]
+            }
+          },
+        "tolerations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Pod tolerations"
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Pod affinity and anti-affinity rules"
+        },
+        "spec": {
+          "type": "object",
+          "description": "Pod specification details",
+          "properties": {
+            "securityContext": {
+              "type": "object",
+              "description": "Security context for the pod",
+              "properties": {
+                "fsGroup": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 65535,
+                  "description": "File system group ID"
+                },
+                "runAsUser": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 65535,
+                  "description": "User ID to run the container"
+                },
+                "runAsGroup": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 65535,
+                  "description": "Group ID to run the container"
+                }
+              }
+            }
+          }
+        },
+        "aws_config": {
+          "type": "object",
+          "description": "AWS-specific configuration",
+          "properties": {
+            "resource_prefix": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-_]+$",
+              "description": "AWS resource prefix"
+            },
+            "resource_suffix": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-_]+$",
+              "description": "AWS resource suffix"
+            },
+            "sftp_server_type": {
+              "type": "string",
+              "enum": ["none", "aws", "local"],
+              "description": "SFTP server type configuration"
+            },
+            "accountId": {
+              "type": "string",
+              "pattern": "^[0-9]{12}$",
+              "description": "AWS Account ID (12 digits)"
+            },
+            "kmsKey": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "description": "AWS KMS Key ID (UUID format)"
+            },
+            "awsCredentials": {
+              "type": "object",
+              "description": "AWS credentials configuration",
+              "properties": {
+                "accessKey": {
+                  "type": "string",
+                  "description": "AWS Access Key ID (16-128 uppercase alphanumeric characters)"
+                },
+                "secretId": {
+                  "type": "string",
+                  "minLength": 16,
+                  "description": "AWS Secret Access Key"
+                },
+                "region": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9-]+$",
+                  "enum": [
+                    "us-east-1", "us-east-2", "us-west-1", "us-west-2",
+                    "eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1", "eu-north-1",
+                    "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "ap-northeast-2", "ap-south-1",
+                    "ca-central-1", "sa-east-1", "af-south-1", "me-south-1",
+                    "ap-east-1", "ap-northeast-3", "eu-south-1"
+                  ],
+                  "description": "AWS region identifier"
+                }
+              },
+              "required": ["accessKey", "secretId", "region"]
+            }
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secret names for different services",
+          "properties": {
+            "internal_elastic_client": {
+              "type": "string",
+              "description": "Internal Elasticsearch client secret name"
+            },
+            "secrets_store_csi_role_arn": {
+              "type": "string",
+              "pattern": "^arn:aws:iam::[0-9]{12}:role/[a-zA-Z0-9-_]+$",
+              "description": "AWS IAM role ARN for secrets store CSI driver"
+            }
+          }
+        }
+      }
+    },
+    "smallcell_support": {
+      "type": "object",
+      "required": ["enabled"],
+      "description": "Small cell 5G support configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable small cell 5G support"
+        }
+      }
+    },
+    "ConnectionUrls": {
+      "type": "object",
+      "description": "Service connection URLs",
+      "properties": {
+        "keycloak": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^https?://",
+              "description": "Keycloak service URL"
+            },
+            {
+              "type": "object",
+              "description": "Keycloak service configuration object"
+            }
+          ]
+        },
+        "elastic": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Elasticsearch service URL"
+        },
+        "spark": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Spark service URL"
+        },
+        "coreApi": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Diesel service URL"
+        },
+        "certsmgmt": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Certificate management service URL"
+        },
+        "pgDb": {
+          "type": "object",
+          "description": "PostgreSQL database connection details",
+          "properties": {
+            "host": {
+              "type": "string",
+              "description": "Database host"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "description": "Database port"
+            },
+            "user": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Database username"
+            }
+          }
+        }
+      }
+    },
+    "emsui": {
+      "type": "object",
+      "description": "EMS UI configuration",
+      "properties": {
+        "serial_number": {
+          "type": "string",
+          "pattern": "^[A-Z0-9-]+$",
+          "description": "EMS UI serial number"
+        }
+      }
+    },
+    "spc_support": {
+      "type": "object",
+      "description": "SPC support configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable SPC support"
+        },
+        "address": {
+          "type": "string",
+          "description": "SPC address"
+        },
+        "serial_number": {
+          "type": "string",
+          "pattern": "^[A-Z0-9-]+$",
+          "description": "SPC serial number"
+        },
+        "wss_address": {
+          "type": "string",
+          "description": "WebSocket Secure address"
+        }
+      }
+    },
+    "initContainers": {
+      "type": "object",
+      "description": "Init container images configuration",
+      "properties": {
+        "curlImage": {
+          "type": "object",
+          "required": ["repo", "tag"],
+          "properties": {
+            "repo": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*(/[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*)*$",
+              "description": "Curl image repository"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "description": "Curl image tag"
+            }
+          }
+        },
+        "busyboxImage": {
+          "type": "object",
+          "required": ["repo", "tag"],
+          "properties": {
+            "repo": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*(/[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*)*$",
+              "description": "Busybox image repository"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "description": "Busybox image tag"
+            }
+          }
+        }
+      }
+    },
+    "mongoInit": {
+      "type": "object",
+      "description": "MongoDB initialization configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable MongoDB initialization"
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*(/[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*)*$",
+          "description": "MongoDB image repository and name"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "MongoDB image tag"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "Never", "IfNotPresent"],
+          "description": "Image pull policy"
+        },
+        "imagePullSecrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              }
+            },
+            "required": ["name"]
+          },
+          "description": "Image pull secrets for private registries"
+        },
+        "nameOverride": {
+          "type": "string",
+          "description": "Override the name of the chart"
+        },
+        "fullnameOverride": {
+          "type": "string",
+          "description": "Override the full name of the chart"
+        },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations to add to pods"
+        },
+        "resources": {
+          "type": "object",
+          "description": "Resource limits and requests - flexible configuration",
+          "additionalProperties": true
+        },
+          "nodeSelector": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "object" },
+                { "type": "null" }
+              ]
+            }
+          },
+        "tolerations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Pod tolerations"
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Pod affinity and anti-affinity rules"
+        }
+      }
+    }
+  }
+}

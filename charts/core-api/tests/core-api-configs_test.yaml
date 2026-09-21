@@ -1,0 +1,472 @@
+suite: test core-api configs
+templates:
+  - core-api-configs.yaml
+tests:
+  - it: should render both configmaps
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          dev_mode: false
+          diesel_java_options: "-Xmx1g"
+          cpe_support:
+            enabled: true
+          enb_support:
+            enabled: false
+          dieselWikiHeaderXFrameOptionsValue: "SAMEORIGIN"
+          diesel_wiki_header: "true"
+          sftp_ip: "192.168.1.100"
+          diesel_secret: "test-secret-min16chars"
+          ems_client_secret: "ems-secret-16chars"
+          TOCUrlBase: "http://toc:7001"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: should create core-api-config-env configmap with correct metadata
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          dev_mode: false
+          diesel_java_options: "-Xmx1g"
+          cpe_support:
+            enabled: true
+          enb_support:
+            enabled: false
+          dieselWikiHeaderXFrameOptionsValue: "SAMEORIGIN"
+          diesel_wiki_header: "true"
+          sftp_ip: "192.168.1.100"
+          diesel_secret: "test-secret-min16chars"
+          ems_client_secret: "ems-secret-16chars"
+          TOCUrlBase: "http://toc:7001"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: core-api-config-env
+
+  - it: should create core-api-properties configmap with correct metadata
+    documentIndex: 1
+    set:
+      platform: onprem
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: core-api-properties
+
+  - it: should set DEV_MODE from values
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          dev_mode: true
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.DEV_MODE
+          value: "true"
+
+  - it: should set DIESEL_JAVA_OPTIONS from values
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          diesel_java_options: "-Xmx2g -Xms512m"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.DIESEL_JAVA_OPTIONS
+          value: "-Xmx2g -Xms512m"
+
+  - it: should set ACS_ENABLED from cpe_support enabled
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          cpe_support:
+            enabled: false
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.ACS_ENABLED
+          value: "false"
+
+  - it: should set ENB_ENABLED from enb_support enabled
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          enb_support:
+            enabled: true
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.ENB_ENABLED
+          value: "true"
+
+  - it: should set DIESEL_WIKI_HEADER_X_FRAME_OPTIONS_VALUE from values
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          dieselWikiHeaderXFrameOptionsValue: "DENY"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.DIESEL_WIKI_HEADER_X_FRAME_OPTIONS_VALUE
+          value: "DENY"
+
+  - it: should set DIESEL_WIKI_HEADERS from values
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          diesel_wiki_header: "false"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.DIESEL_WIKI_HEADERS
+          value: "false"
+
+  - it: should set SFTP_IP from values
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          sftp_ip: "10.0.0.50"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.SFTP_IP
+          value: "10.0.0.50"
+
+  - it: should set DIESEL_SECRET from values
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          diesel_secret: "my-secret-key-16chars"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.DIESEL_SECRET
+          value: "my-secret-key-16chars"
+
+  - it: should set EMS_CLIENT_SECRET from values
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          ems_client_secret: "ems-secret-16chars"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.EMS_CLIENT_SECRET
+          value: "ems-secret-16chars"
+
+  - it: should set POSTGRES_URL with correct format
+    documentIndex: 0
+    set:
+      platform: onprem
+      ConnectionUrls:
+        pgDb:
+          host: "postgres-server"
+          dbname: "production_db"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.POSTGRES_URL
+          value: "jdbc:postgresql://postgres-server/production_db?ssl=false"
+
+  - it: should set KEYCLOAK_URL for onprem platform
+    documentIndex: 0
+    set:
+      platform: onprem
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak-onprem/auth"
+    asserts:
+      - equal:
+          path: data.KEYCLOAK_URL
+          value: "http://keycloak-onprem/auth"
+
+  - it: should set KEYCLOAK_URL for aws platform
+    documentIndex: 0
+    set:
+      platform: aws
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          aws: "http://keycloak-aws:8080/auth"
+    asserts:
+      - equal:
+          path: data.KEYCLOAK_URL
+          value: "http://keycloak-aws:8080/auth"
+
+  - it: should set GENIEACS_API_URL with namespace template
+    documentIndex: 0
+    set:
+      platform: onprem
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - matchRegex:
+          path: data.GENIEACS_API_URL
+          pattern: "http://genieacsnbi\\..*\\.svc\\.cluster\\.local:7557"
+
+  - it: should set SPARK_URL with namespace template
+    documentIndex: 0
+    set:
+      platform: onprem
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - matchRegex:
+          path: data.SPARK_URL
+          pattern: "http://spark\\..*\\.svc\\.cluster\\.local:4041"
+
+  - it: should set SPARK_METRICS_URL with namespace template
+    documentIndex: 0
+    set:
+      platform: onprem
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - matchRegex:
+          path: data.SPARK_METRICS_URL
+          pattern: "http://spark\\..*\\.svc\\.cluster\\.local:4040"
+
+  - it: should set TOCUrlBase from values
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          TOCUrlBase: "http://toc-service:8080"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.TOCUrlBase
+          value: "http://toc-service:8080"
+
+  - it: should contain logback configuration in core-api-properties
+    documentIndex: 1
+    set:
+      platform: onprem
+    asserts:
+      - exists:
+          path: data["logback.core-api.xml"]
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<configuration debug=\"false\">"
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<appender name=\"FILE\""
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<appender name=\"CONSOLE\""
+
+  - it: should contain correct logback appender configuration
+    documentIndex: 1
+    set:
+      platform: onprem
+    asserts:
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<file>\\$\\{application\\.home\\}/logs/log\\.log</file>"
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<pattern>%date %\\.\\-1level %\\.7thread %logger : %message %xException%n</pattern>"
+
+  - it: should contain correct root logger configuration
+    documentIndex: 1
+    set:
+      platform: onprem
+    asserts:
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<root level=\"info\">"
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<appender-ref ref=\"CONSOLE\"/>"
+
+  - it: should contain specific logger configurations
+    documentIndex: 1
+    set:
+      platform: onprem
+    asserts:
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<logger name=\"netty\" level=\"info\"/>"
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<logger name=\"controllers\" level=\"info\"/>"
+      - matchRegex:
+          path: data["logback.core-api.xml"]
+          pattern: "<logger name=\"razie.diesel\" level=\"info\"/>"
+
+  - it: should handle valid IP addresses
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          sftp_ip: "192.168.1.1"
+          dev_mode: false
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.SFTP_IP
+          value: "192.168.1.1"
+      - equal:
+          path: data.DEV_MODE
+          value: "false"
+
+  - it: should handle boolean values converted to strings
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          cpe_support:
+            enabled: true
+          enb_support:
+            enabled: false
+          dev_mode: true
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.ACS_ENABLED
+          value: "true"
+      - equal:
+          path: data.ENB_ENABLED
+          value: "false"
+      - equal:
+          path: data.DEV_MODE
+          value: "true"
+
+  - it: should handle minimum secret lengths
+    documentIndex: 0
+    set:
+      platform: onprem
+      coreApi:
+        data:
+          diesel_secret: "1234567890123456"
+          ems_client_secret: "abcdefghij123456"
+      ConnectionUrls:
+        pgDb:
+          host: "postgresql"
+          dbname: "ems-platform"
+        keycloak:
+          onprem: "http://keycloak/auth"
+    asserts:
+      - equal:
+          path: data.DIESEL_SECRET
+          value: "1234567890123456"
+      - equal:
+          path: data.EMS_CLIENT_SECRET
+          value: "abcdefghij123456"

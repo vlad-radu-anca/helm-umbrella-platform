@@ -1,0 +1,481 @@
+# .github/workflows/version-bump.yaml
+name: Bump Chart Version
+
+on:
+  workflow_call:
+    inputs:
+      changed_charts:
+        required: true
+        type: string
+      any_changes:
+        required: true
+        type: string
+    outputs:  # Add this section
+      has_changes:
+        description: "Whether any version changes were made"
+        value: ${{ jobs.bump-chart-version.outputs.has_changes }}
+      charts_to_publish:
+        description: "JSON array of charts to publish"
+        value: ${{ jobs.bump-chart-version.outputs.charts_to_publish }}
+      umbrella_updated:
+        description: "Whether umbrella chart was updated"
+        value: ${{ jobs.bump-chart-version.outputs.umbrella_updated }}
+
+jobs:
+  bump-chart-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      has_changes: ${{ steps.check_version_changes.outputs.has_changes }}
+      charts_to_publish: ${{ steps.check_version_changes.outputs.charts_to_publish }}
+      umbrella_updated: ${{ steps.update_umbrella.outputs.umbrella_updated }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install yq, jq, and helm
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          sudo apt-get install -y jq
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine version bump type
+        id: bump_type
+        run: |
+          # For post-merge, analyze the merge commit message
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          
+          BUMP_TYPE="patch"  # default
+          
+          # Extract PR title from merge commit (first line typically contains it)
+          PR_TITLE=$(echo "$COMMIT_MSG" | head -n1)
+          
+          # Check for keywords in the entire commit message
+          if echo "$COMMIT_MSG" | grep -qiE '\b(major|breaking)\b'; then
+            BUMP_TYPE="major"
+          elif echo "$COMMIT_MSG" | grep -qiE '\b(minor|feature|feat)\b'; then
+            BUMP_TYPE="minor"
+          elif echo "$COMMIT_MSG" | grep -qiE '\b(patch|fix|bugfix)\b'; then
+            BUMP_TYPE="patch"
+          fi
+          
+          # Also check specifically in PR title
+          if echo "$PR_TITLE" | grep -qiE '\b(major|breaking)\b'; then
+            BUMP_TYPE="major"
+          elif echo "$PR_TITLE" | grep -qiE '\b(minor|feature|feat)\b'; then
+            BUMP_TYPE="minor"
+          elif echo "$PR_TITLE" | grep -qiE '\b(patch|fix|bugfix)\b'; then
+            BUMP_TYPE="patch"
+          fi
+          
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "Detected bump type: $BUMP_TYPE from merge commit"
+
+      - name: Bump versions for changed charts only
+        id: bump_versions
+        run: |
+          BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+          CHANGED_CHARTS='${{ inputs.changed_charts }}'
+          
+          echo "DEBUG: Changed charts JSON: $CHANGED_CHARTS"
+          echo "DEBUG: Bump type: $BUMP_TYPE"
+          
+          # Validate that we have changed charts
+          if [ "$CHANGED_CHARTS" = "[]" ] || [ "$CHANGED_CHARTS" = "" ] || [ "$CHANGED_CHARTS" = "null" ]; then
+            echo "No charts to process"
+            echo "updated_charts=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Parse the JSON array of changed charts
+          CHART_LIST=$(echo "$CHANGED_CHARTS" | jq -r '.[]')
+          
+          echo "DEBUG: Parsed chart list:"
+          echo "$CHART_LIST"
+          
+          if [ -z "$CHART_LIST" ]; then
+            echo "No valid charts found in the list"
+            echo "updated_charts=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Remove any existing temp file
+          rm -f /tmp/updated_charts
+          
+          # Process only the changed charts (umbrella chart is already excluded)
+          echo "$CHART_LIST" | while IFS= read -r chart_name; do
+            # Skip empty lines
+            if [ -z "$chart_name" ]; then
+              continue
+            fi
+            
+            chart_file="charts/$chart_name/Chart.yaml"
+            
+            echo "🔍 Checking chart: $chart_name (file: $chart_file)"
+            
+            if [ ! -f "$chart_file" ]; then
+              echo "⚠️  Chart.yaml not found for $chart_name at $chart_file, skipping..."
+              continue
+            fi
+            
+            echo "📊 Processing chart: $chart_name"
+            
+            # Get current version
+            CURRENT_VERSION=$(yq eval '.version' "$chart_file")
+            echo "Current version: $CURRENT_VERSION"
+            
+            # Validate version format
+            if ! echo "$CURRENT_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "❌ Invalid version format in $chart_file: $CURRENT_VERSION"
+              continue
+            fi
+            
+            # Parse version components
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+            
+            # Bump version based on type
+            case $BUMP_TYPE in
+              "major")
+                NEW_VERSION="$((MAJOR + 1)).0.0"
+                ;;
+              "minor")
+                NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+                ;;
+              "patch")
+                NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+                ;;
+            esac
+            
+            echo "✅ New version: $NEW_VERSION"
+            
+            # Update chart version only
+            yq eval ".version = \"$NEW_VERSION\"" -i "$chart_file"
+            echo "Updated $chart_name chart version: $CURRENT_VERSION → $NEW_VERSION"
+            
+            # Track updated charts for summary (append to file since this is in a subshell)
+            echo "$chart_name:$CURRENT_VERSION→$NEW_VERSION" >> /tmp/updated_charts
+          done
+          
+          # Read the updated charts from the temp file
+          if [ -f /tmp/updated_charts ]; then
+            UPDATED_CHARTS=$(cat /tmp/updated_charts | tr '\n' ',' | sed 's/,$//')
+            echo "updated_charts=$UPDATED_CHARTS" >> $GITHUB_OUTPUT
+            echo "Summary of updated charts: $UPDATED_CHARTS"
+          else
+            echo "updated_charts=" >> $GITHUB_OUTPUT
+            echo "No charts were actually updated"
+          fi
+
+      - name: Update umbrella chart dependencies
+        id: update_umbrella
+        if: steps.bump_versions.outputs.updated_charts != ''
+        working-directory: ./charts/ems-platform-stack
+        run: |
+          UPDATED_CHARTS="${{ steps.bump_versions.outputs.updated_charts }}"
+          UMBRELLA_CHART_FILE="Chart.yaml"
+          
+          echo "🗿 Updating umbrella chart dependencies..."
+          
+          if [ ! -f "$UMBRELLA_CHART_FILE" ]; then
+            echo "❌ Umbrella chart file not found: $UMBRELLA_CHART_FILE"
+            exit 1
+          fi
+          
+          # Debug: Show all dependency names in umbrella chart
+          echo "🔍 Dependencies found in umbrella chart:"
+          yq eval '.dependencies[].name' "$UMBRELLA_CHART_FILE" | sort
+          echo ""
+          
+          # Create a backup
+          cp "$UMBRELLA_CHART_FILE" "$UMBRELLA_CHART_FILE.backup"
+          
+          # Track if any umbrella updates were made
+          UMBRELLA_UPDATED=false
+          
+          # Process each updated chart
+          IFS=',' read -ra CHART_UPDATES <<< "$UPDATED_CHARTS"
+          for chart_update in "${CHART_UPDATES[@]}"; do
+            chart_name=$(echo "$chart_update" | cut -d':' -f1)
+            # Extract new version by removing everything before the arrow
+            new_version=$(echo "$chart_update" | sed 's/.*→//')
+            
+            echo "🔄 Checking if $chart_name needs update in umbrella chart..."
+
+            # The umbrella references charts by their Helm name (Chart.yaml .name),
+            # which differs from the directory name (e.g. topicOperator -> topic-operator-helm).
+            chart_file="../$chart_name/Chart.yaml"
+            if [ ! -f "$chart_file" ]; then
+              echo "⚠️  $chart_file not found, skipping..."
+              continue
+            fi
+            dependency_name=$(yq eval '.name' "$chart_file")
+
+            # Check if this dependency exists in the umbrella chart
+            if yq eval ".dependencies[] | select(.name == \"$dependency_name\")" "$UMBRELLA_CHART_FILE" | grep -q "name:"; then
+              current_umbrella_version=$(yq eval ".dependencies[] | select(.name == \"$dependency_name\") | .version" "$UMBRELLA_CHART_FILE")
+              echo "📊 Found $dependency_name in umbrella chart with version: $current_umbrella_version"
+              
+              if [ "$current_umbrella_version" != "$new_version" ]; then
+                echo "🔄 Updating $dependency_name from $current_umbrella_version to $new_version"
+                yq eval "(.dependencies[] | select(.name == \"$dependency_name\") | .version) = \"$new_version\"" -i "$UMBRELLA_CHART_FILE"
+                UMBRELLA_UPDATED=true
+              else
+                echo "✅ $dependency_name already at version $new_version"
+              fi
+            else
+              echo "⚠️  Dependency $dependency_name not found in umbrella chart"
+            fi
+          done
+          
+          # Bump umbrella chart version if any dependencies were updated
+          if [ "$UMBRELLA_UPDATED" = true ]; then
+            CURRENT_UMBRELLA_VERSION=$(yq eval '.version' "$UMBRELLA_CHART_FILE")
+            echo "📈 Bumping umbrella chart version from $CURRENT_UMBRELLA_VERSION"
+            
+            # Parse version components
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_UMBRELLA_VERSION"
+            
+            # Use the same bump type logic as individual charts
+            BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+            case $BUMP_TYPE in
+              "major")
+                NEW_UMBRELLA_VERSION="$((MAJOR + 1)).0.0"
+                ;;
+              "minor")
+                NEW_UMBRELLA_VERSION="$MAJOR.$((MINOR + 1)).0"
+                ;;
+              "patch")
+                NEW_UMBRELLA_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+                ;;
+            esac
+            
+            yq eval ".version = \"$NEW_UMBRELLA_VERSION\"" -i "$UMBRELLA_CHART_FILE"
+            echo "✅ Updated umbrella chart version: $CURRENT_UMBRELLA_VERSION → $NEW_UMBRELLA_VERSION"
+            
+            echo "umbrella_updated=true" >> $GITHUB_OUTPUT
+            echo "umbrella_version_change=$CURRENT_UMBRELLA_VERSION→$NEW_UMBRELLA_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "umbrella_updated=false" >> $GITHUB_OUTPUT
+            echo "No umbrella chart updates needed"
+          fi
+
+      - name: Check for umbrella chart direct changes
+        id: check_umbrella_direct
+        run: |
+          # Check if the umbrella chart itself was directly modified
+          # Since we're in post-merge, we need to check the merge commit
+          BASE_REF="HEAD^1"
+          
+          # Check if umbrella chart was directly modified
+          if git diff --name-only $BASE_REF HEAD | grep -q "charts/ems-platform-stack/"; then
+            echo "umbrella_directly_changed=true" >> $GITHUB_OUTPUT
+            echo "Umbrella chart was directly modified"
+          else
+            echo "umbrella_directly_changed=false" >> $GITHUB_OUTPUT
+            echo "Umbrella chart was not directly modified"
+          fi
+
+      - name: Bump umbrella chart if directly changed
+        id: bump_umbrella_direct
+        if: steps.check_umbrella_direct.outputs.umbrella_directly_changed == 'true' && steps.update_umbrella.outputs.umbrella_updated != 'true'
+        working-directory: ./charts/ems-platform-stack
+        run: |
+          UMBRELLA_CHART_FILE="Chart.yaml"
+          BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+          
+          echo "🗿 Bumping umbrella chart version (direct changes)..."
+          
+          CURRENT_UMBRELLA_VERSION=$(yq eval '.version' "$UMBRELLA_CHART_FILE")
+          echo "📈 Current umbrella chart version: $CURRENT_UMBRELLA_VERSION"
+          
+          # Parse version components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_UMBRELLA_VERSION"
+          
+          # Bump version based on type
+          case $BUMP_TYPE in
+            "major")
+              NEW_UMBRELLA_VERSION="$((MAJOR + 1)).0.0"
+              ;;
+            "minor")
+              NEW_UMBRELLA_VERSION="$MAJOR.$((MINOR + 1)).0"
+              ;;
+            "patch")
+              NEW_UMBRELLA_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+              ;;
+          esac
+          
+          yq eval ".version = \"$NEW_UMBRELLA_VERSION\"" -i "$UMBRELLA_CHART_FILE"
+          echo "✅ Updated umbrella chart version: $CURRENT_UMBRELLA_VERSION → $NEW_UMBRELLA_VERSION"
+          
+          echo "umbrella_direct_updated=true" >> $GITHUB_OUTPUT
+          echo "umbrella_direct_version_change=$CURRENT_UMBRELLA_VERSION→$NEW_UMBRELLA_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Validate umbrella chart configuration
+        if: steps.update_umbrella.outputs.umbrella_updated == 'true' || steps.bump_umbrella_direct.outputs.umbrella_direct_updated == 'true'
+        working-directory: ./charts/ems-platform-stack
+        run: |
+          echo "🧪 Validating umbrella chart configuration..."
+          
+          # Validate Chart.yaml syntax
+          yq eval '.' Chart.yaml > /dev/null || {
+            echo "::error file=Chart.yaml::Invalid YAML syntax in Chart.yaml"
+            exit 1
+          }
+          
+          # Check if all dependencies have proper version format
+          yq eval '.dependencies[] | .name + ":" + .version' Chart.yaml | while read -r dep; do
+            dep_name=$(echo "$dep" | cut -d':' -f1)
+            dep_version=$(echo "$dep" | cut -d':' -f2)
+            
+            if ! echo "$dep_version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "::error file=Chart.yaml::Invalid version format for dependency $dep_name: $dep_version"
+              exit 1
+            fi
+            
+            echo "✅ Dependency $dep_name has valid version: $dep_version"
+          done
+          
+          echo "✅ Umbrella chart configuration validated successfully"
+          echo "ℹ️  Note: Helm dependency update will be performed after charts are published to registry"
+
+      - name: Check for version changes
+        id: check_version_changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected:"
+            git diff --name-only
+            
+            # Prepare charts list for publishing
+            PUBLISH_CHARTS=()
+            
+            # Add individual charts that were updated
+            if [ -n "${{ steps.bump_versions.outputs.updated_charts }}" ]; then
+              IFS=',' read -ra CHART_UPDATES <<< "${{ steps.bump_versions.outputs.updated_charts }}"
+              for chart_update in "${CHART_UPDATES[@]}"; do
+                chart_name=$(echo "$chart_update" | cut -d':' -f1)
+                PUBLISH_CHARTS+=("\"$chart_name\"")
+              done
+            fi
+            
+            # Add umbrella chart if it was updated (either through dependencies or direct changes)
+            if [ "${{ steps.update_umbrella.outputs.umbrella_updated }}" = "true" ] || [ "${{ steps.bump_umbrella_direct.outputs.umbrella_direct_updated }}" = "true" ]; then
+              PUBLISH_CHARTS+=("\"ems-platform-stack\"")
+            fi
+            
+            # Convert to JSON array
+            CHARTS_JSON="[$(IFS=','; echo "${PUBLISH_CHARTS[*]}")]"
+            echo "charts_to_publish=$CHARTS_JSON" >> $GITHUB_OUTPUT
+            echo "Charts to publish: $CHARTS_JSON"
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_version_changes.outputs.has_changes == 'true'
+        run: |
+          git add charts/*/Chart.yaml
+          
+          # Create commit message
+          COMMIT_MSG="chore: bump chart versions (${{ steps.bump_type.outputs.bump_type }})
+
+          Updated individual charts:
+          $(echo "${{ steps.bump_versions.outputs.updated_charts }}" | tr ',' '\n' | sed 's/^/- /')"
+          
+          # Add umbrella chart info if it was updated
+          if [ "${{ steps.update_umbrella.outputs.umbrella_updated }}" = "true" ]; then
+            COMMIT_MSG="$COMMIT_MSG
+
+          Updated umbrella chart (dependencies):
+          - ems-platform-stack: ${{ steps.update_umbrella.outputs.umbrella_version_change }}"
+          elif [ "${{ steps.bump_umbrella_direct.outputs.umbrella_direct_updated }}" = "true" ]; then
+            COMMIT_MSG="$COMMIT_MSG
+
+          Updated umbrella chart (direct changes):
+          - ems-platform-stack: ${{ steps.bump_umbrella_direct.outputs.umbrella_direct_version_change }}"
+          fi
+          
+          git commit -m "$COMMIT_MSG"
+          git push origin HEAD
+
+      - name: Create GitHub Release
+        if: steps.check_version_changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const updatedCharts = "${{ steps.bump_versions.outputs.updated_charts }}";
+            const bumpType = "${{ steps.bump_type.outputs.bump_type }}";
+            const umbrellaUpdated = "${{ steps.update_umbrella.outputs.umbrella_updated }}";
+            const umbrellaVersionChange = "${{ steps.update_umbrella.outputs.umbrella_version_change }}";
+            const umbrellaDirectUpdated = "${{ steps.bump_umbrella_direct.outputs.umbrella_direct_updated }}";
+            const umbrellaDirectVersionChange = "${{ steps.bump_umbrella_direct.outputs.umbrella_direct_version_change }}";
+            
+            // Get the merge commit SHA
+            const mergeSha = context.sha;
+            
+            // Create release notes
+            let releaseBody = `## 🎯 Chart Version Bump (${bumpType})\n\n`;
+            releaseBody += `### 📊 Individual Charts Updated\n\n`;
+            
+            let tagName = `release-${new Date().toISOString().split('T')[0]}`;
+            
+            if (updatedCharts) {
+              const charts = updatedCharts.split(',');
+              charts.forEach(chart => {
+                const [name, versions] = chart.split(':');
+                releaseBody += `- **${name}**: \`${versions}\`\n`;
+              });
+            }
+            
+            // Umbrella chart section
+            if (umbrellaUpdated === 'true') {
+              releaseBody += `\n### 🗿 Umbrella Chart Updated (Dependencies)\n\n`;
+              releaseBody += `- **ems-platform-stack**: \`${umbrellaVersionChange}\`\n`;
+            } else if (umbrellaDirectUpdated === 'true') {
+              releaseBody += `\n### 🗿 Umbrella Chart Updated (Direct Changes)\n\n`;
+              releaseBody += `- **ems-platform-stack**: \`${umbrellaDirectVersionChange}\`\n`;
+            }
+            
+            releaseBody += `\n---\n*Release created automatically after PR merge*`;
+            
+            // Create the release
+            try {
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tagName,
+                name: `Chart Release - ${tagName}`,
+                body: releaseBody,
+                target_commitish: mergeSha,
+                draft: false,
+                prerelease: false
+              });
+              console.log(`Created release: ${tagName}`);
+            } catch (error) {
+              console.error('Error creating release:', error);
+            }
+
+      - name: Summary
+        if: steps.check_version_changes.outputs.has_changes == 'false'
+        run: |
+          echo "ℹ️  No version bumps needed - charts may have been changed but Chart.yaml files were not modified or no valid charts found."

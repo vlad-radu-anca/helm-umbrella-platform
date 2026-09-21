@@ -1,0 +1,27 @@
+{{- if .Values.sftp.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  {{- if eq .Values.platform "onprem" }}
+  annotations:
+    autoheal: "true"
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  {{- end }}
+  name: {{ include "sftp-server.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "sftp-server.name" . }}
+    helm.sh/chart: {{ include "sftp-server.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  type: {{ .Values.sftp.service.type }}
+  loadBalancerIP: {{ .Values.loadBalancerIP }}
+  ports:
+    - port: {{ .Values.sftp.service.port }}
+      targetPort: ssh
+      protocol: TCP
+      name: ssh
+  selector:
+    app.kubernetes.io/name: {{ include "sftp-server.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

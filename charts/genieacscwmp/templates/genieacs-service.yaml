@@ -1,0 +1,22 @@
+{{- if .Values.cpeSupport.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    autoheal: "true"
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  name: genieacscwmp
+  labels:
+    {{- include "genieacscwmp.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  loadBalancerIP: {{ .Values.loadBalancerIP }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 7547
+      protocol: TCP
+      name: cwmp
+  selector:
+    {{- include "genieacscwmp.selectorLabels" . | nindent 4 }}
+{{- end }}

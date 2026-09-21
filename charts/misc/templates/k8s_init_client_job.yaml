@@ -1,0 +1,108 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k8s-initclient-job
+spec:
+  ttlSecondsAfterFinished: 18000
+  template:
+    spec:
+      {{- if eq .Values.platform "aws" }}
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      {{- end }}
+      imagePullSecrets:
+        - name: regcred
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ .Values.initContainers.busyboxImage.repo | default "busybox" }}:{{ .Values.initContainers.busyboxImage.tag | default "1.36.0" }}
+          command: ["sh", "-c", 'until nslookup postgresql | grep "Name:"; do echo waiting for postgres pod...; sleep 2; done']
+        - name: wait-for-keycloak
+          image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+          command: [ "/bin/sh", "-c" ]
+          args:
+            [
+                "while [[ $(curl -sw '%{http_code}' {{ .Values.ConnectionUrls.keycloak }}/realms/master -o /dev/null) -ne 200 ]]; do sleep 30; echo 'Waiting for the keycloak to be ready...'; done; echo 'Connection with keycloak established'",
+            ]
+      restartPolicy: Never
+      containers:
+        - image: "{{ .Values.init_client.image }}:{{ .Values.init_client.tag }}"
+          imagePullPolicy: {{ .Values.init_client.pullPolicy }}
+          name: init-client-job
+          volumeMounts:
+            - name: init-client-application-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+            - name: pg-ems-platform-perms-client
+              mountPath: "/opt/ems-platform/config/postgres"
+              readOnly: true
+            - name: external-keycloak-client-secrets
+              mountPath: "/opt/ems-platform/config/keycloak/admin"
+              readOnly: true
+            - name: smtp-client-secrets
+              mountPath: "/opt/ems-platform/config/smtp"
+              readOnly: true
+            - name: keycloak-core-api-secrets
+              mountPath: "/opt/ems-platform/config/keycloak/core-api"
+              readOnly: true
+            - name: keycloak-toc-secrets
+              mountPath: "/opt/ems-platform/config/keycloak/toc"
+              readOnly: true
+          resources: {}
+      volumes:
+        - name: init-client-application-config
+          configMap:
+            name: init-client-application-config
+        - name: pg-ems-platform-perms-client
+          {{- if eq .Values.platform "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.secrets.internal_pg_client | replace "_" "-" }}"
+          {{- else }}
+          secret:
+            secretName: internal-pg-client
+          {{- end }}
+        - name: external-keycloak-client-secrets
+          {{- if eq .Values.platform "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.secrets.external_keycloak_admin_client | replace "_" "-" }}"
+          {{- else }}
+          secret:
+            secretName: external-keycloak-admin-client
+          {{- end }}
+        - name: keycloak-core-api-secrets
+          {{- if eq .Values.platform "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.secrets.internal_keycloak_core_api_client | replace "_" "-" }}"
+          {{- else }}
+          secret:
+            secretName: internal-keycloak-core-api-client
+          {{- end }}
+        - name: keycloak-toc-secrets
+          {{- if eq .Values.platform "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.secrets.internal_keycloak_toc_client | replace "_" "-" }}"
+          {{- else }}
+          secret:
+            secretName: internal-keycloak-toc-client
+          {{- end }}
+        - name: smtp-client-secrets
+          {{- if eq .Values.platform "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.secrets.external_smtp_default_user_client | replace "_" "-" }}"
+          {{- else }}
+          secret:
+            secretName: external-smtp-default-user-client
+          {{- end }}

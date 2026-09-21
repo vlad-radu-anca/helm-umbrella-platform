@@ -1,0 +1,34 @@
+platform: onprem
+cpeSupport:
+  enabled: true
+image: ghcr.io/vlad-radu-anca/genieacs-nbi
+tag: latest
+pullPolicy: Always
+replicaCount: 1
+imagePullSecrets: []
+podAnnotations: {}
+tolerations: []
+resources: {}
+nodeSelector:
+  onprem: {}
+  aws: {}
+affinity: {}
+service:
+  type: ClusterIP
+  port: 7557
+job:
+  image: ghcr.io/vlad-radu-anca/genieacs-job
+  tag: latest
+  pullPolicy: Always
+initContainers:
+  busyboxImage:
+    repo: busybox
+    tag: 1.36.1
+  curlImage:
+    repo: curlimages/curl
+    tag: 8.12.1
+
+securityContext:
+  fsGroup: 2000
+  runAsUser: 2500
+  runAsGroup: 2500

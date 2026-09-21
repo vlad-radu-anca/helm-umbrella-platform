@@ -1,0 +1,9 @@
+{{- if eq .Values.platform "onprem" }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: ca-issuer
+spec:
+  ca:
+    secretName: issuer-secret
+{{- end }}

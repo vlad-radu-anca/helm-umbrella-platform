@@ -1,0 +1,149 @@
+{{- if .Values.smallcell_support.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ems-certs-mgmt
+  labels:
+    {{- include "emscertmanager.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.emscertmanager.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "emscertmanager.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "emscertmanager.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: {{ .Values.emscertmanager.spec.securityContext.fsGroup }}
+        runAsUser: {{ .Values.emscertmanager.spec.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.emscertmanager.spec.securityContext.runAsGroup }}
+      {{- with .Values.emscertmanager.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      priorityClassName: ems-platform-high-priority
+      serviceAccountName: ecm-sa
+      initContainers:
+      - name: wait-for-mongo
+        image: {{ .Values.mongoInit.image | default "public.ecr.aws/bitnami/mongodb" }}:{{ .Values.mongoInit.tag | default "8.0.6-debian-12-r0" }}
+        env:
+          - name: MONGO_USERNAME
+            valueFrom:
+              secretKeyRef:
+                {{- if eq (include "platform" .) "onprem" }}
+                name: external-mongo-emsdb-secret
+                {{- else if eq (include "platform" .) "aws" }}
+                name: mongo-emsdb-client
+                {{- end }}
+                key: mongo-username
+          - name: MONGO_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                {{- if eq (include "platform" .) "onprem" }}
+                name: external-mongo-emsdb-secret
+                {{- else if eq (include "platform" .) "aws" }}
+                name: mongo-emsdb-client
+                {{- end }}
+                key: mongo-password
+        command:
+          - bash
+          - -c
+          - >
+            {{- if eq (include "platform" .) "aws" }}
+            until mongosh "{{ .Values.ConnectionUrls.mongo.aws.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)";
+            {{- else if eq (include "platform" .) "onprem" }}
+            until mongosh "{{ .Values.ConnectionUrls.mongo.onprem.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)";
+            {{- end }}
+            do echo "Waiting for MongoDB to be available"; sleep 2; done;
+      - name: wait-for-elastic
+        image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+        command: [ "/bin/sh", "-c" ]
+        env:
+          - name: ELK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: internal-elastic-admin-client
+                key: elk-username
+          - name: ELK_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: internal-elastic-admin-client
+                key: elk-password
+        args:
+          - "while [[ $(curl -sw '%{http_code}' -u \"$ELK_USERNAME:$ELK_PASSWORD\" {{ .Values.ConnectionUrls.elastic }} -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the Elastic to be ready...'; done; echo 'Connection with Elastic established'"
+      containers:
+        - image: "{{ .Values.emscertmanager.containers.image }}:{{- if eq (include "platform" .) "aws" }}{{ .Values.emscertmanager.containers.aws.tag }}{{- else if eq (include "platform" .) "onprem" }}{{ .Values.emscertmanager.containers.onprem.tag }}{{- end }}"
+          imagePullPolicy: {{ .Values.emscertmanager.pullPolicy }}
+          name: emscertmanager
+          env:
+            - name: CERT-MGMT_EMS_SERIALNUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: ems-serialnumber
+                  key: EMS_SERIALNUMBER
+          ports:
+            - containerPort: 7702
+              name: http
+          resources:
+            {{- toYaml .Values.emscertmanager.resources | nindent 12 }}
+          volumeMounts:
+            - name: ems-certs-mgmt-application-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+          {{- if or (eq (include "platform" .) "onprem") (eq (include "platform" .) "aws") }}
+            - name: elastic-client-secrets
+              mountPath: "/opt/ems-platform/config/elastic"
+              readOnly: true
+            - name: mongo-emsdb-secrets
+              mountPath: "/opt/ems-platform/config/mongo"
+              readOnly: true
+          {{- end }}
+      restartPolicy: Always
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.emscertmanager.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.emscertmanager.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.emscertmanager.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.emscertmanager.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: ems-certs-mgmt-application-config
+          configMap:
+            name: ems-certs-mgmt-application-config
+        {{- if eq (include "platform" .) "onprem" }}
+        - name: elastic-client-secrets
+          secret:
+            secretName: internal-elastic-admin-client
+        - name: mongo-emsdb-secrets
+          secret:
+            secretName: external-mongo-emsdb-secret
+        {{- else if eq (include "platform" .) "aws" }}
+        - name: elastic-client-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.emscertmanager.secrets.internal_elastic_client | replace "_" "-" }}"
+        - name: mongo-emsdb-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: mongoatlas-emsdb-secrets
+        {{- end }}
+{{- end }}

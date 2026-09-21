@@ -1,0 +1,71 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k8s-initclient-job
+spec:
+  ttlSecondsAfterFinished: 18000
+  template:
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ .Values.initContainers.busyboxImage.repo | default "busybox" }}:{{ .Values.initContainers.busyboxImage.tag | default "1.36.0" }}
+          command: ["sh", "-c", 'until nslookup postgresql | grep "Name:"; do echo waiting for postgres pod...; sleep 2; done']
+        - name: wait-for-keycloak
+          image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+          command: [ "/bin/sh", "-c" ]
+          args:
+            [
+                "while [[ $(curl -sw '%{http_code}' {{ .Values.ConnectionUrls.keycloak }}/realms/master -o /dev/null) -ne 200 ]]; do sleep 30; echo 'Waiting for the keycloak to be ready...'; done; echo 'Connection with keycloak established'",
+            ]
+      restartPolicy: Never
+      containers:
+        - image: "{{ .Values.job.init_client.image }}:{{ .Values.job.init_client.tag }}"
+          imagePullPolicy: {{ .Values.job.init_client.pullPolicy }}
+          name: init-client-job
+          volumeMounts:
+            - name: init-client-application-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+            - name: pg-ems-platform-perms-client
+              mountPath: "/opt/ems-platform/config/postgres"
+              readOnly: true
+            - name: external-keycloak-client-secrets
+              mountPath: "/opt/ems-platform/config/keycloak/admin"
+              readOnly: true
+            - name: smtp-client-secrets
+              mountPath: "/opt/ems-platform/config/smtp"
+              readOnly: true
+            - name: keycloak-ems-secrets
+              mountPath: "/opt/ems-platform/config/keycloak/ems"
+              readOnly: true
+            - name: keycloak-core-api-secrets
+              mountPath: "/opt/ems-platform/config/keycloak/core-api"
+              readOnly: true
+            - name: keycloak-toc-secrets
+              mountPath: "/opt/ems-platform/config/keycloak/toc"
+              readOnly: true
+          resources: {}
+      volumes:
+        - name: init-client-application-config
+          configMap:
+            name: init-client-application-config
+        - name: pg-ems-platform-perms-client
+          secret:
+            secretName: internal-pg-client
+        - name: external-keycloak-client-secrets
+          secret:
+            secretName: external-keycloak-admin-client
+        - name: keycloak-ems-secrets
+          secret:
+            secretName: internal-keycloak-ems-client
+        - name: keycloak-core-api-secrets
+          secret:
+            secretName: internal-keycloak-core-api-client
+        - name: keycloak-toc-secrets
+          secret:
+            secretName: internal-keycloak-toc-client
+        - name: smtp-client-secrets
+          secret:
+            secretName: external-smtp-default-user-client

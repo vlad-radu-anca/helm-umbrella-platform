@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["aws", "onprem"],
+      "description": "Deployment platform - must be either 'aws' or 'onprem'"
+    },
+    "endpoint": {
+      "type": "string",
+      "description": "The base domain used for generating hostnames"
+    },
+    "ngf": {
+      "type": "object",
+      "properties": {
+        "smallcell_support": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable or disable small cell 5G support"
+            }
+          },
+          "required": ["enabled"]
+        },
+        "ngf_enabled": {
+          "type": "boolean",
+          "description": "Enable or disable NGF"
+        },
+        "awsMode": {
+          "type": "boolean",
+          "description": "Enable AWS mode"
+        },
+        "port": {
+          "type": "object",
+          "properties": {
+            "http": {
+              "type": "object",
+              "properties": {
+                "aws": {
+                  "type": "integer",
+                  "description": "HTTP port for AWS"
+                }
+              },
+              "required": ["aws"]
+            },
+            "https": {
+              "type": "object",
+              "properties": {
+                "onprem": {
+                  "type": "integer",
+                  "description": "HTTPS port for on-prem deployments"
+                }
+              },
+              "required": ["onprem"]
+            }
+          },
+          "required": ["http", "https"]
+        },
+        "hostname": {
+          "type": "string",
+          "description": "Hostname for the EMS API"
+        },
+        "allowOrigin": {
+          "type": "string",
+          "description": "CORS allowed origin"
+        },
+        "cert": {
+          "type": "object",
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "description": "Certificate issuer"
+            },
+            "commonName": {
+              "type": "string",
+              "description": "Common name for the certificate"
+            }
+          },
+          "required": ["issuer", "commonName"]
+        },
+        "paths": {
+          "type": "object",
+          "properties": {
+            "toc": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "cts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "emscertmanager": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "apigw": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "swagger": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["toc", "cts", "emscertmanager", "apigw", "swagger"]
+        }
+      },
+      "required": ["smallcell_support", "ngf_enabled", "awsMode", "port", "hostname", "allowOrigin", "cert", "paths"]
+    }
+  },
+  "required": ["platform", "endpoint", "ngf"]
+}

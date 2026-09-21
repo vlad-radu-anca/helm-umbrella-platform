@@ -1,0 +1,60 @@
+{{- if .Values.coreApi.ingress.enabled -}}
+{{- $fullName := include "coreApi.fullname" . -}}
+{{- $svcPort := .Values.coreApi.service.port -}}
+{{- $endpoint := .Values.endpoint -}}
+{{- if and .Values.coreApi.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.coreApi.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.coreApi.ingress.annotations "kubernetes.io/ingress.class" .Values.coreApi.ingress.className}}
+  {{- end }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "coreApi.labels" . | nindent 4 }}
+  {{- with .Values.coreApi.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.coreApi.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.coreApi.ingress.className }}
+  {{- end }}
+  {{- if .Values.coreApi.ingress.tls }}
+  tls:
+    {{- range .Values.coreApi.ingress.tls }}
+    - hosts:
+        - core-api.{{ $.Values.endpoint }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.coreApi.ingress.hosts }}
+    - host: core-api.{{ $.Values.endpoint }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: core-api
+                port:
+                  number: {{ $svcPort }}
+              {{- else }}
+              serviceName: core-api
+              servicePort: {{ $svcPort }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,433 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EMS UI Helm Chart Values Schema",
+  "description": "Schema validation for EMS UI Helm chart values.yaml",
+  "type": "object",
+  "required": ["endpoint", "platform", "emsui"],
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "endpoint": {
+      "type": "string",
+      "description": "The endpoint URL for the EMS service",
+      "pattern": "^[a-zA-Z0-9.-]+$"
+    },
+    "platform": {
+      "type": "string",
+      "description": "Deployment platform",
+      "enum": ["onprem", "aws"]
+    },
+    "emsui": {
+      "type": "object",
+      "description": "EMS UI application configuration",
+      "required": ["image", "tag", "pullPolicy", "serial_number", "replicaCount"],
+      "properties": {
+        "image": {
+          "type": "string",
+          "description": "Docker image repository",
+          "pattern": "^[a-zA-Z0-9._/-]+$"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Docker image tag",
+          "pattern": "^[a-zA-Z0-9._-]+$"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "description": "Image pull policy",
+          "enum": ["Always", "IfNotPresent", "Never"]
+        },
+        "serial_number": {
+          "type": "string",
+          "description": "Serial number for the EMS device",
+          "pattern": "^[A-Z0-9-]+$"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "description": "Number of replicas",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "ingress": {
+          "type": "object",
+          "description": "Ingress configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable ingress"
+            },
+            "className": {
+              "type": "string",
+              "description": "Ingress class name"
+            },
+            "annotations": {
+              "type": "object",
+              "description": "Ingress annotations",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "hosts": {
+              "type": "array",
+              "description": "Ingress hosts configuration",
+              "items": {
+                "type": "object",
+                "required": ["host", "paths"],
+                "properties": {
+                  "host": {
+                    "type": "string",
+                    "description": "Hostname",
+                    "format": "hostname"
+                  },
+                  "paths": {
+                    "type": "array",
+                    "description": "Path configurations",
+                    "items": {
+                      "type": "object",
+                      "required": ["path", "pathType"],
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "description": "URL path",
+                          "pattern": "^/"
+                        },
+                        "pathType": {
+                          "type": "string",
+                          "description": "Path type",
+                          "enum": ["Exact", "Prefix", "ImplementationSpecific"]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "tls": {
+              "type": "array",
+              "description": "TLS configuration",
+              "items": {
+                "type": "object",
+                "required": ["secretName", "hosts"],
+                "properties": {
+                  "secretName": {
+                    "type": "string",
+                    "description": "TLS secret name",
+                    "pattern": "^[a-z0-9-]+$"
+                  },
+                  "hosts": {
+                    "type": "array",
+                    "description": "Hosts covered by TLS certificate",
+                    "items": {
+                      "type": "string",
+                      "format": "hostname"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "imagePullSecrets": {
+          "type": "array",
+          "description": "Image pull secrets",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Secret name",
+                "pattern": "^[a-z0-9-]+$"
+              }
+            }
+          }
+        },
+        "nameOverride": {
+          "type": "string",
+          "description": "Override for the chart name"
+        },
+        "fullnameOverride": {
+          "type": "string",
+          "description": "Override for the full name"
+        },
+        "podAnnotations": {
+          "type": "object",
+          "description": "Pod annotations",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "service": {
+          "type": "object",
+          "description": "Service configuration",
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Service type",
+              "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"]
+            },
+            "port": {
+              "type": "integer",
+              "description": "Service port",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "description": "Resource requirements",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "description": "Resource limits",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "description": "CPU limit",
+                  "pattern": "^[0-9]+m?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "description": "Memory limit",
+                  "pattern": "^[0-9]+(Ki|Mi|Gi|Ti|Pi|Ei|k|M|G|T|P|E)?$"
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "description": "Resource requests",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "description": "CPU request",
+                  "pattern": "^[0-9]+m?$"
+                },
+                "memory": {
+                  "type": "string",
+                  "description": "Memory request",
+                  "pattern": "^[0-9]+(Ki|Mi|Gi|Ti|Pi|Ei|k|M|G|T|P|E)?$"
+                }
+              }
+            }
+          }
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "object" },
+              { "type": "null" }
+            ]
+          }
+        },
+        "tolerations": {
+          "type": "array",
+          "description": "Pod tolerations",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "operator": {
+                "type": "string",
+                "enum": ["Equal", "Exists"]
+              },
+              "value": {
+                "type": "string"
+              },
+              "effect": {
+                "type": "string",
+                "enum": ["NoSchedule", "PreferNoSchedule", "NoExecute"]
+              },
+              "tolerationSeconds": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Pod affinity rules"
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "Subdomain for the service",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "cpe_support": {
+          "type": "object",
+          "description": "CPE support configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable CPE support"
+            }
+          }
+        },
+        "BRAND_NAME": {
+          "type": "string",
+          "description": "Brand name",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "enb_support": {
+          "type": "object",
+          "description": "eNB support configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable eNB support"
+            }
+          }
+        },
+        "spc_support": {
+          "type": "object",
+          "description": "SPC support configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable SPC support"
+            }
+          }
+        },
+        "smallcell_support": {
+          "type": "object",
+          "description": "Small cell 5G support configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable small cell 5G support"
+            }
+          }
+        }
+      }
+    },
+    "initContainers": {
+      "type": "object",
+      "description": "Init containers configuration",
+      "properties": {
+        "curlImage": {
+          "type": "object",
+          "description": "Curl image configuration",
+          "properties": {
+            "repo": {
+              "type": "string",
+              "description": "Image repository",
+              "pattern": "^[a-zA-Z0-9._/-]+$"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Image tag",
+              "pattern": "^[a-zA-Z0-9._-]+$"
+            }
+          }
+        },
+        "busyboxImage": {
+          "type": "object",
+          "description": "Busybox image configuration",
+          "properties": {
+            "repo": {
+              "type": "string",
+              "description": "Image repository",
+              "pattern": "^[a-zA-Z0-9._/-]+$"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Image tag",
+              "pattern": "^[a-zA-Z0-9._-]+$"
+            }
+          }
+        }
+      }
+    },
+    "ConnectionUrls": {
+      "type": "object",
+      "description": "Connection URLs for various services",
+      "properties": {
+        "keycloak": {
+          "description": "Keycloak service URL",
+          "format": "uri"
+        },
+        "elastic": {
+          "type": "string",
+          "description": "Elasticsearch service URL",
+          "format": "uri"
+        },
+        "spark": {
+          "type": "string",
+          "description": "Spark service URL",
+          "format": "uri"
+        },
+        "coreApi": {
+          "type": "string",
+          "description": "Diesel service URL",
+          "format": "uri"
+        },
+        "certsmgmt": {
+          "type": "string",
+          "description": "Certificate management service URL",
+          "format": "uri"
+        }
+      }
+    },
+    "emsui_subdomain": {
+      "type": "string",
+      "description": "EMS UI subdomain",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "data": {
+      "type": "object",
+      "description": "ConfigMap data section",
+      "properties": {
+        "app.json": {
+          "type": "object",
+          "description": "Application configuration JSON",
+          "properties": {
+            "sftp": {
+              "type": "object",
+              "description": "SFTP configuration",
+              "properties": {
+                "serverType": {
+                  "type": "string",
+                  "description": "SFTP server type",
+                  "enum": ["none", "standard", "secure"]
+                }
+              },
+              "required": ["serverType"]
+            },
+            "holidayTheme": {
+              "type": "boolean",
+              "description": "Enable holiday theme"
+            }
+          },
+          "required": ["sftp", "holidayTheme"]
+        }
+      }
+    }
+  },
+  "anyOf": [
+    {
+      "properties": {
+        "platform": {
+          "const": "onprem"
+        }
+      },
+      "not": {
+        "required": ["data"]
+      }
+    },
+    {
+      "properties": {
+        "platform": {
+          "const": "aws"
+        }
+      }
+    }
+  ]
+}

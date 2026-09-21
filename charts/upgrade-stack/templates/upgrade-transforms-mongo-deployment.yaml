@@ -1,0 +1,188 @@
+{{- if .Values.upgradeTransformsMongo.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upgrade-transforms-mongo
+  labels:
+    app: upgrade-transforms-mongo
+    {{- include "upgrade-stack.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.upgradeTransformsMongo.replicaCount }}
+  selector:
+    matchLabels:
+      app: upgrade-transforms-mongo
+  template:
+    metadata:
+      labels:
+        app: upgrade-transforms-mongo
+    spec:
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      {{- with .Values.imageDefaults.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: upgrade-transforms-mongo
+          image: {{ .Values.upgradeTransformsMongo.image }}:{{ .Values.upgradeTransformsMongo.tag }}
+          imagePullPolicy: {{ .Values.imageDefaults.pullPolicy }}
+          env:
+            # Additional Mongo DB credentials (platform specific secret names)
+            - name: MONGO_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-admin-client{{ else }}external-mongo-admin-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.usernameKey }}
+            - name: MONGO_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-admin-client{{ else }}external-mongo-admin-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.passwordKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_SPC_TARGET_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-spcdb-client{{ else }}external-mongo-spcdb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_SPC_TARGET_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-spcdb-client{{ else }}external-mongo-spcdb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.passwordKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_SPCKPI_TARGET_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-spckpidb-client{{ else }}external-mongo-spckpidb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_SPCKPI_TARGET_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-spckpidb-client{{ else }}external-mongo-spckpidb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.passwordKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_SPC_SOURCE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-spcdb-client{{ else }}external-mongo-spcdb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_SPC_SOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-spcdb-client{{ else }}external-mongo-spcdb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.passwordKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_SPCKPI_SOURCE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-spckpidb-client{{ else }}external-mongo-spckpidb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_SPCKPI_SOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-spckpidb-client{{ else }}external-mongo-spckpidb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.passwordKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_TOC_SOURCE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-emsdb-client{{ else }}external-mongo-emsdb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_TOC_SOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-emsdb-client{{ else }}external-mongo-emsdb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.passwordKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_TOC_TARGET_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-emsdb-client{{ else }}external-mongo-emsdb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_MONGOCLIENT_TOC_TARGET_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-emsdb-client{{ else }}external-mongo-emsdb-secret{{ end }}
+                  key: {{ .Values.envFromSecrets.mongo.passwordKey }}
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+            {{- if .Values.mounts.elastic }}
+            - name: elastic-secrets
+              mountPath: /opt/ems-platform/config/elastic
+              readOnly: true
+            {{- end }}
+            {{- if .Values.mounts.mongo }}
+            - name: mongo-secrets
+              mountPath: /opt/ems-platform/config/mongo
+              readOnly: true
+            - name: mongo-spckpi-secrets
+              mountPath: /opt/ems-platform/config/mongo-spckpi
+              readOnly: true
+            - name: mongo-spc-secrets
+              mountPath: /opt/ems-platform/config/mongo-spc
+              readOnly: true
+            - name: mongo-admin-secrets
+              mountPath: /opt/ems-platform/config/mongo-admin
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.upgradeTransformsMongo.resources | nindent 12 }}
+      volumes:
+        - name: app-config
+          configMap:
+            name: upgrade-stack-config
+        {{- if .Values.mounts.elastic }}
+        - name: elastic-secrets
+          {{- if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: internal-elastic-admin-client
+          {{- else }}
+          secret:
+            secretName: internal-elastic-admin-client
+          {{- end }}
+        {{- end }}
+        {{- if .Values.mounts.mongo }}
+        - name: mongo-secrets
+          {{- if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: mongoatlas-emsdb-secrets
+          {{- else }}
+          secret:
+            secretName: external-mongo-emsdb-secret
+          {{- end }}
+        - name: mongo-admin-secrets
+          {{- if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: mongoatlas-admin-secrets
+          {{- else }}
+          secret:
+            secretName: external-mongo-admin-secret
+          {{- end }}
+        - name: mongo-spc-secrets
+          {{- if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: mongoatlas-spcdb-secrets
+          {{- else }}
+          secret:
+            secretName: external-mongo-spcdb-secret
+          {{- end }}
+        - name: mongo-spckpi-secrets
+          {{- if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: mongoatlas-spckpidb-secrets
+          {{- else }}
+          secret:
+            secretName: external-mongo-spckpidb-secret
+          {{- end }}
+        {{- end }}
+{{- end }}

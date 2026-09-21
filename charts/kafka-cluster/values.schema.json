@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "kafkaTopic": {
+      "type": "object",
+      "required": ["namespace", "cluster", "topics"],
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "prefix": { "type": "string" },
+        "namespace": { "type": "string" },
+        "cluster": { "type": "string" },
+        "defaultConfig": {
+          "type": "object",
+          "properties": {
+            "partitions": { "type": "integer", "minimum": 1 },
+            "replicas": { "type": "integer", "minimum": 1 },
+            "retentionMs": { "type": "integer" },
+            "segmentBytes": { "type": "integer" },
+            "cleanupPolicy": { "type": "string" },
+            "maxMessageBytes": { "type": "integer" },
+            "compressionType": { "type": "string" }
+          }
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "kafkaCluster": {
+      "type": "object",
+      "required": ["enabled", "namespace", "clusterName", "kafkaVersion", "replicaCount", "nodePool", "topicHook"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "externalAccess": {
+          "type": "object",
+          "required": ["enabled", "type"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "type": {
+               "type": "string",
+               "enum": ["metal", "nlb", "lb"]
+            },
+            "port": { "type": "integer", "default": 9094 },
+            "internet": { "type": "boolean", "default": false},
+            "auth": {
+               "type": "string",
+               "enum": ["tls", "scram-sha-512"]
+            },
+            "san": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            }
+          }
+        },
+        "namespace": { "type": "string" },
+        "clusterName": { "type": "string" },
+        "kafkaVersion": { "type": "string" },
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "nodePool": {
+          "type": "object",
+          "required": ["name", "roles", "storage"],
+          "properties": {
+            "name": { "type": "string" },
+            "roles": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            },
+            "storage": {
+              "type": "object",
+              "required": ["type", "volumes"],
+              "properties": {
+                "type": { "type": "string" },
+                "volumes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "type", "size"],
+                    "properties": {
+                      "id": { "type": "integer" },
+                      "type": { "type": "string" },
+                      "size": { "type": "string" },
+                      "deleteClaim": { "type": "boolean" },
+                      "kraftMetadata": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "transaction": {
+          "type": "object",
+          "properties": {
+            "minIsr": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "offsetsReplicationFactor": { "type": "integer" },
+            "transactionLogReplicationFactor": { "type": "integer" },
+            "defaultReplicationFactor": { "type": "integer" },
+            "minInsyncReplicas": { "type": "integer" },
+            "interBrokerProtocolVersion": { "type": "string" }
+          }
+        },
+        "metrics": {
+          "type": "object",
+          "required": ["enabled", "configMapName", "configMapKey"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "configMapName": { "type": "string" },
+            "configMapKey": { "type": "string" }
+          }
+        },
+        "resources": { "type": "object" },
+        "template": {
+          "type": "object",
+          "properties": {
+            "metadata": { "type": "object" },
+            "securityContext": { "type": "object" },
+            "priorityClassName": { "type": "string" },
+            "terminationGracePeriodSeconds": { "type": "integer" },
+            "topologySpreadConstraints": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "affinity": { "type": "object" },
+            "tolerations": {
+              "type": "array",
+              "items": { "type": "object" }
+            }
+          }
+        },
+        "topicHook": {
+            "type": "object",
+            "required": ["jobName", "readinessProbeURL"],
+            "properties": {
+                "jobName": { "type": "string" },
+                "containerName": { "type": "string" },
+                "readinessProbeURL": { "type": "string", "format": "uri" },
+                "hook": {
+                    "type": "string",
+                    "enum": ["pre-install", "post-install", "pre-upgrade", "post-upgrade"]
+                },
+                "hookWeight": { "type": "integer" },
+                "hookDeletePolicy": {
+                    "type": "string",
+                    "enum": ["before-hook-creation", "hook-succeeded", "hook-failed"]
+                },
+                "restartPolicy": {
+                    "type": "string",
+                    "enum": ["OnFailure", "Never"]
+              }
+            }
+          }
+      }
+    }
+  },
+
+ "required": ["kafkaTopic", "kafkaCluster"]
+}

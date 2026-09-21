@@ -1,0 +1,56 @@
+{{- if .Values.k8sKafkaUpgrade.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-kafka-upgrade-deployment
+  labels:
+    app: k8s-kafka-upgrade
+    {{- include "upgrade-stack.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.k8sKafkaUpgrade.replicaCount }}
+  selector:
+    matchLabels:
+      app: k8s-kafka-upgrade
+  template:
+    metadata:
+      labels:
+        app: k8s-kafka-upgrade
+    spec:
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      {{- with .Values.imageDefaults.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: k8s-kafka-upgrade
+          image: {{ .Values.k8sKafkaUpgrade.image }}:{{ .Values.k8sKafkaUpgrade.tag }}
+          imagePullPolicy: {{ .Values.imageDefaults.pullPolicy }}
+          volumeMounts:
+            - name: kafka-upgrade-job-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+            {{- if .Values.mounts.elastic }}
+            - name: elastic-secrets
+              mountPath: /opt/ems-platform/config/elastic
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.k8sKafkaUpgrade.resources | nindent 12 }}
+      volumes:
+        - name: kafka-upgrade-job-config
+          configMap:
+            name: kafka-upgrade-job-config
+        {{- if .Values.mounts.elastic }}
+        - name: elastic-secrets
+          {{- if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: elastic-admin-client
+          {{- else }}
+          secret:
+            secretName: internal-elastic-admin-client
+          {{- end }}
+        {{- end }}
+{{- end }}

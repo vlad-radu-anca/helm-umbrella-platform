@@ -1,0 +1,24 @@
+{{- if .Values.ngf.ngf_enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: ems
+spec:
+  gatewayClassName: nginx
+  listeners:
+  {{- if .Values.ngf.awsMode }}
+  - name: http
+    port: {{ .Values.ngf.port.http.aws }}
+    protocol: HTTP
+  {{- else }}
+  - name: https
+    hostname: {{ include "ngf.hostname" . }}
+    port: {{ .Values.ngf.port.https.onprem }}
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: emsapi-tls-secret
+  {{- end }}
+{{- end }}

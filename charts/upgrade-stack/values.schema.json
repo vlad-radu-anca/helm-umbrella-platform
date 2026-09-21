@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "platform": {"type": "string", "enum": ["onprem", "aws"]},
+    "temporalClient": {"type": "object"},
+    "elasticClient": {"type": "object"},
+    "k8sKafkaUpgrade": {"type": "object"},
+    "upgradeTransformsMongo": {"type": "object"},
+    "upgradeTransformsPg": {"type": "object"},
+    "upgradeTransformsElastic": {"type": "object"},
+    "secrets": {"type": "object"},
+    "mounts": {"type": "object"}
+  }
+}

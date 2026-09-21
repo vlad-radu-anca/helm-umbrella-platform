@@ -1,0 +1,35 @@
+{{- if .Values.apigw.smallcell_support.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apigw
+  labels:
+    {{- include "apigw.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.apigw.service.type }}
+  ports:
+    - port: {{ .Values.apigw.service.port }}
+      targetPort: 7702
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "apigw.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apigw-headless
+  labels:
+    {{- include "apigw.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.apigw.service.port }}
+      targetPort: 7702
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "apigw.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,27 @@
+{{- if and .Values.ngf.smallcell_support.enabled .Values.ngf.ngf_enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: cts
+spec:
+  parentRefs:
+  - name: ems
+  hostnames:
+    - {{ include "ngf.hostname" . }}
+  rules:
+  - matches:
+    {{- range .Values.ngf.paths.cts }}
+    - path:
+        type: PathPrefix
+        value: {{ . }}
+    {{- end }}
+    filters:
+    - type: ExtensionRef
+      extensionRef:
+        group: gateway.nginx.org
+        kind: SnippetsFilter
+        name: oauth2
+    backendRefs:
+    - name: cts-headless
+      port: 7701
+{{- end }}

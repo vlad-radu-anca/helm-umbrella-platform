@@ -1,0 +1,16 @@
+suite: Kafka ConfigMap Tests
+templates:
+  - templates/kafka-configmap.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should create a ConfigMap with metrics config
+    asserts:
+      - equal:
+          path: kind
+          value: ConfigMap
+      - equal:
+          path: metadata.name
+          value: kafka-metrics
+      - isNotEmpty:
+          path: data.kafka-metrics-config.yml

@@ -1,0 +1,433 @@
+suite: test core-api service
+templates:
+  - core-api-service.yaml
+tests:
+  - it: should render all three services
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - hasDocuments:
+          count: 3
+      - isKind:
+          of: Service
+        documentIndex: 0
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - isKind:
+          of: Service
+        documentIndex: 2
+
+  - it: should use correct API version
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - isAPIVersion:
+          of: v1
+        documentIndex: 0
+      - isAPIVersion:
+          of: v1
+        documentIndex: 1
+      - isAPIVersion:
+          of: v1
+        documentIndex: 2
+
+  - it: should have correct service names
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: core-api-headless
+        documentIndex: 1
+      - equal:
+          path: metadata.name
+          value: core-api-metrics
+        documentIndex: 2
+
+  - it: should include proper labels on all services
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: core-api-helm
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: core-api-helm
+        documentIndex: 1
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 1
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: core-api-helm
+        documentIndex: 2
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 2
+
+  - it: should have correct selector labels on all services
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - equal:
+          path: spec.selector["app.kubernetes.io/name"]
+          value: core-api-helm
+        documentIndex: 0
+      - equal:
+          path: spec.selector["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 0
+      - equal:
+          path: spec.selector["app.kubernetes.io/name"]
+          value: core-api-helm
+        documentIndex: 1
+      - equal:
+          path: spec.selector["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 1
+      - equal:
+          path: spec.selector["app.kubernetes.io/name"]
+          value: core-api-helm
+        documentIndex: 2
+      - equal:
+          path: spec.selector["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        documentIndex: 2
+
+  - it: should use ClusterIP when dev_mode is false
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 0
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 1
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 2
+
+  - it: should use LoadBalancer when dev_mode is true
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: true
+      loadBalancerIP: 1.2.3.4
+    asserts:
+      - equal:
+          path: spec.type
+          value: LoadBalancer
+        documentIndex: 0
+      - equal:
+          path: spec.loadBalancerIP
+          value: 1.2.3.4
+        documentIndex: 0
+
+  - it: should not include loadBalancerIP when dev_mode is false
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - notExists:
+          path: spec.loadBalancerIP
+        documentIndex: 0
+
+  - it: should have correct annotations on main service
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - equal:
+          path: metadata.annotations["autoheal"]
+          value: "true"
+        documentIndex: 0
+      - equal:
+          path: metadata.annotations["metallb.universe.tf/allow-shared-ip"]
+          value: "key-to-share-1.2.3.4"
+        documentIndex: 0
+
+  - it: should have correct ports configuration on main service
+    set:
+      coreApi:
+        service:
+          port: 8080
+          akka_cluster_port: 9003
+          akka_management_port: 8559
+      dev_mode: false
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 9000
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].protocol
+          value: TCP
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].name
+          value: http
+        documentIndex: 0
+      - equal:
+          path: spec.ports[1].port
+          value: 9003
+        documentIndex: 0
+      - equal:
+          path: spec.ports[1].targetPort
+          value: 9002
+        documentIndex: 0
+      - equal:
+          path: spec.ports[1].protocol
+          value: TCP
+        documentIndex: 0
+      - equal:
+          path: spec.ports[1].name
+          value: akka-cluster
+        documentIndex: 0
+      - equal:
+          path: spec.ports[2].port
+          value: 8559
+        documentIndex: 0
+      - equal:
+          path: spec.ports[2].targetPort
+          value: 8558
+        documentIndex: 0
+      - equal:
+          path: spec.ports[2].protocol
+          value: TCP
+        documentIndex: 0
+      - equal:
+          path: spec.ports[2].name
+          value: akka-management
+        documentIndex: 0
+
+  - it: should have sessionAffinity on main service
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - equal:
+          path: spec.sessionAffinity
+          value: ClientIP
+        documentIndex: 0
+
+  - it: should have correct headless service configuration
+    set:
+      coreApi:
+        service:
+          port: 8080
+          akka_cluster_port: 9003
+          akka_management_port: 8559
+      dev_mode: false
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 1
+      - equal:
+          path: spec.clusterIP
+          value: None
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 9000
+        documentIndex: 1
+      - equal:
+          path: spec.ports[1].port
+          value: 9003
+        documentIndex: 1
+      - equal:
+          path: spec.ports[1].targetPort
+          value: 9002
+        documentIndex: 1
+      - equal:
+          path: spec.ports[2].port
+          value: 8559
+        documentIndex: 1
+      - equal:
+          path: spec.ports[2].targetPort
+          value: 8558
+        documentIndex: 1
+
+  - it: should not have sessionAffinity on headless service
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - notExists:
+          path: spec.sessionAffinity
+        documentIndex: 1
+
+  - it: should have correct metrics service configuration
+    set:
+      coreApi:
+        service:
+          port: 8080
+          akka_cluster_port: 9003
+          akka_management_port: 8559
+      dev_mode: false
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 2
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        documentIndex: 2
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 9000
+        documentIndex: 2
+      - equal:
+          path: spec.ports[0].protocol
+          value: TCP
+        documentIndex: 2
+      - equal:
+          path: spec.ports[0].name
+          value: http
+        documentIndex: 2
+
+  - it: should have only one port on metrics service
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - lengthEqual:
+          path: spec.ports
+          count: 1
+        documentIndex: 2
+
+  - it: should not have annotations on headless service
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - notExists:
+          path: metadata.annotations
+        documentIndex: 1
+
+  - it: should not have annotations on metrics service
+    set:
+      coreApi:
+        service:
+          port: 9000
+          akka_cluster_port: 9002
+          akka_management_port: 8558
+      dev_mode: false
+    asserts:
+      - notExists:
+          path: metadata.annotations
+        documentIndex: 2
+
+  - it: should work with different port configurations
+    set:
+      coreApi:
+        service:
+          port: 3000
+          akka_cluster_port: 7000
+          akka_management_port: 5000
+      dev_mode: true
+      loadBalancerIP: 10.0.0.1
+    asserts:
+      - equal:
+          path: spec.type
+          value: LoadBalancer
+        documentIndex: 0
+      - equal:
+          path: spec.loadBalancerIP
+          value: 10.0.0.1
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].port
+          value: 3000
+        documentIndex: 0
+      - equal:
+          path: spec.ports[1].port
+          value: 7000
+        documentIndex: 0
+      - equal:
+          path: spec.ports[2].port
+          value: 5000
+        documentIndex: 0

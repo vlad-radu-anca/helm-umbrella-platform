@@ -1,0 +1,108 @@
+platform: onprem # aws
+
+emscertmanager:
+  enabled: true
+  containers:
+    image: vlad-radu-anca/certs-mgmt
+    aws:
+      tag: 5.0-aws.latest
+    onprem:
+      tag: 5.0-onprem.latest
+  pullPolicy: Always
+  replicaCount: 1
+  imagePullSecrets: [name: "regcred"]
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 7702
+  resources:
+    limits:
+      cpu: 200m
+      memory: 350Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 95
+    targetMemoryUtilizationPercentage: 95
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-small  # Note: using small for topic operator
+    onprem: {}
+    default:
+      kubernetes.io/os: linux
+  tolerations: []
+  affinity: {}
+  spec:
+    securityContext:
+      fsGroup: 10000
+      runAsUser: 10000
+      runAsGroup: 10000
+  aws_config:
+    resource_prefix: "ems-platform"
+    resource_suffix: "xlv"
+    sftp_server_type: "none"
+    accountId: "123456789012"
+    kmsKey: "00000000-0000-0000-0000-000000000000"
+    awsCredentials:
+      accessKey: "ABCJKFVAFVSDV"
+      secretId: "fvavvfdvfv+asvasvsvsa"
+      region: "us-east-1"
+  secrets: 
+    internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
+    secrets_store_csi_role_arn: "arn:aws:iam::123456789012:role/ems-platform-secrets-store-csi-role-5r9"
+
+smallcell_support: # small cell 5g support
+  enabled: true
+
+ConnectionUrls:
+  keycloak: 
+      aws: http://keycloak-headless.keycloak.svc.cluster.local:8080/auth
+      onprem: http://keycloak/auth
+  elastic: http://elastic:9200
+  spark: http://spark:4041
+  coreApi: http://core-api:9000
+  certsmgmt: http://ems-certs-mgmt:7702
+  mongo:
+    aws:
+      uri: mongodb+srv://cluster0.example.mongodb.net
+    onprem:
+      uri: mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0
+
+emsui:
+  serial_number: "EM0-0000000000"
+
+spc_support:
+  enabled: true
+  address: "confd-headless"
+  serial_number: "SP0-0024080699"
+  wss_address: "spark-hl"
+
+initContainers:
+  curlImage:
+    repo: curlimages/curl
+    tag: 8.12.1
+  busyboxImage:
+    repo: busybox
+    tag: 1.36.1
+
+dev_mode: false
+
+mongoInit:
+  enabled: true
+  image: public.ecr.aws/bitnami/mongodb
+  tag: 8.0.6-debian-12-r0
+  pullPolicy: IfNotPresent
+  imagePullSecrets: [name: "dockersecret"]
+  nameOverride: "ems-"
+  fullnameOverride: ""
+  podAnnotations: {}
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}  

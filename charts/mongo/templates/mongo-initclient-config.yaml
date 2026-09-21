@@ -1,0 +1,17 @@
+{{- if .Values.mongoInit.enabled }}
+
+{{- $mongoUri := dict "mongoUri" .Values.ConnectionUrls.mongo.uri }}
+{{- $mongoCfg := merge .Values.mongoInit.cfg $mongoUri }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.mongoInit.nameOverride }}mongo-initclient-config
+data:
+  cfg.json: |-
+{{ toPrettyJson $mongoCfg | nindent 4 }}
+  mongo-create-users.js: |-
+{{ .Files.Get "src/mongo-create-users.js" | nindent 4 }}
+
+{{- end }}

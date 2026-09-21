@@ -1,0 +1,17 @@
+{{- if .Values.kafkaCluster.enabled }}
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: {{ .Values.kafkaCluster.nodePool.name }}
+  namespace: {{ .Values.kafkaCluster.namespace }}
+  labels:
+    strimzi.io/cluster: {{ .Values.kafkaCluster.clusterName }}
+spec:
+  replicas: {{ .Values.kafkaCluster.replicaCount }}
+  roles:
+    {{- toYaml .Values.kafkaCluster.nodePool.roles | nindent 4 }}
+  storage:
+    type: {{ .Values.kafkaCluster.nodePool.storage.type }}
+    volumes:
+      {{- toYaml .Values.kafkaCluster.nodePool.storage.volumes | nindent 6 }}
+{{- end }}

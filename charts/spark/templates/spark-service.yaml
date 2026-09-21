@@ -1,0 +1,136 @@
+{{- $platform := include "platform" . }}
+
+{{- /* spark-callhome-lb: Only onprem */ -}}
+{{- if eq $platform "onprem" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-callhome-lb
+  annotations:
+    autoheal: "true"
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  labels:
+    app: emsakka-local
+    {{- include "spark.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.loadBalancerIP }}
+  ports:
+    - name: spark-callhome
+      port: 4335
+      targetPort: 4335
+    - name: spark-https
+      port: 8443
+      targetPort: 8443
+    - name: spark-websocket
+      port: 4043
+      targetPort: 4043
+  selector:
+    lbtype: external
+    {{- include "spark.selectorLabels" . | nindent 4 }}
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
+{{- end }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark
+  annotations:
+    autoheal: "true"
+    {{- if and (eq $platform "onprem") .Values.dev_mode }}
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+    {{- end }}
+  labels:
+    app: emsakka-local
+    {{- include "spark.labels" . | nindent 4 }}
+spec:
+  type:
+    {{- if eq $platform "onprem" }}
+      {{ ternary "LoadBalancer" "ClusterIP" .Values.dev_mode }}
+    {{- else }}
+      ClusterIP
+    {{- end }}
+  {{- if and (eq $platform "onprem") .Values.dev_mode }}
+  loadBalancerIP: {{ .Values.loadBalancerIP }}
+  {{- end }}
+  ports:
+    - name: spark
+      port: 4040
+      targetPort: 4040
+    - name: spark-1
+      port: 4041
+      targetPort: 4041
+    - name: spark-2
+      port: 25520
+      targetPort: 25520
+    - name: spark-kamon
+      port: 9095
+      targetPort: 9095
+    - name: spark-callhome
+      port: 4335
+      targetPort: 4335
+    - name: spark-https
+      port: 8443
+      targetPort: 8443
+    - name: spark-websocket
+      port: 4043
+      targetPort: 4043
+  selector:
+    {{- include "spark.selectorLabels" . | nindent 4 }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-hl
+  annotations:
+    autoheal: "true"
+  labels:
+    app: emsakka-local
+    {{- include "spark.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: spark
+      port: 4040
+      targetPort: 4040
+    - name: spark-1
+      port: 4041
+      targetPort: 4041
+    - name: spark-2
+      port: 25520
+      targetPort: 25520
+    - name: spark-callhome
+      port: 4335
+      targetPort: 4335
+    - name: spark-websocket
+      port: 4043
+      targetPort: 4043
+  selector:
+    {{- include "spark.selectorLabels" . | nindent 4 }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-metrics
+  annotations:
+    autoheal: "true"
+  labels:
+    {{- include "spark.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: spark-kamon
+      port: 9095
+      targetPort: 9095
+  selector:
+    {{- include "spark.selectorLabels" . | nindent 4 }}

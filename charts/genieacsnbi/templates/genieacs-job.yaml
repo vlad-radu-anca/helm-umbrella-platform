@@ -1,0 +1,33 @@
+{{- if .Values.cpeSupport.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: genieacsnbi-configure-job
+  labels:
+    component: {{ include "genieacsnbi.fullname" . }}-configure-job
+spec:
+  ttlSecondsAfterFinished: 1800
+  template:
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      initContainers:
+        - name: wait-for-genieacsnbi
+          image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+          command: [ "/bin/sh", "-c" ]
+          args:
+            [
+                "while [[ $(curl -sw '%{http_code}' http://genieacsnbi:7557/presets -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the genieacsnbi to be ready...'; done; echo 'Connection with genieacs established'",
+            ]
+      restartPolicy: Never
+      containers:
+        - image: "{{ .Values.job.image }}:{{ .Values.job.tag }}"
+          imagePullPolicy: {{ .Values.job.pullPolicy }}
+          name: {{ include "genieacsnbi.fullname" . }}-configure-job
+          envFrom:
+           - configMapRef:
+               name: genieacs-config-env
+          args:
+            - /genieacs/configACS.sh
+          resources: {}
+{{- end }}

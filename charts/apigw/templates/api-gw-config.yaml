@@ -1,0 +1,51 @@
+{{- if .Values.apigw.smallcell_support.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apigw-application-config
+data:
+  application.yaml: |
+    app:
+      name: "api_gw"
+      port: 7702
+      baseUrl: http://localhost
+      devMode: {{- if eq .Values.platform "aws" }} false{{ else }} {{ .Values.apigw.dev_mode | default false }}{{ end }}
+      rateLimit:
+        maxRequests: 100
+        expiration: 10 # time in seconds
+
+    swagger:
+      generate: false
+
+    logger:
+      logLevel: "DEBUG"
+      callerLevel: "DEBUG"
+      stackTraceLevel: "ERROR"
+      charLimit: 1024
+      formatJson: TRUE
+
+    fiber:
+      enablePrintRoutes: TRUE
+
+    elasticClient:
+      addresses:
+        - {{ .Values.apigw.ConnectionUrls.elastic | quote }}
+      connectionTimeout: 30
+
+    mongoClient:
+      {{- if eq (include "platform" .) "aws" }}
+      uri: "{{ .Values.apigw.ConnectionUrls.mongo.aws.uri }}"
+      {{- else }}
+      uri: "{{ .Values.apigw.ConnectionUrls.mongo.onprem.uri }}"
+      authSource: tocdb
+      {{- end }}
+      database: {{ .Values.apigw.dbs.mongo.name }}
+      connectionTimeout: 30
+      socketTimeout: 10
+      serverSelection: 30
+      minPoolSize: 1
+      maxPoolSize: 20
+      heartBeatInterval: 10
+      retryWrites: true
+{{- end }}

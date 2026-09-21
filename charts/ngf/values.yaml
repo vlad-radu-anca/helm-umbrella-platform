@@ -1,0 +1,99 @@
+platform: onprem
+endpoint: "ems.example.local"
+smallcell_support:
+  enabled: true
+ngf_enabled: true
+awsMode: false
+port:
+  http:
+    aws: 80
+  https:
+    onprem: 9443
+hostname: "emsapi.{{ .Values.endpoint }}"
+allowOrigin: "emsui.{{ .Values.endpoint }}"
+cert:
+  issuer: selfsigned-cluster-issuer
+  commonName: my-selfsigned-ca
+  duration: 8760h
+  renewBefore: 168h
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+paths:
+  toc:
+  - /auth
+  - /clusters
+  - /deployments
+  - /devices
+  - /file-transfers
+  - /networks
+  - /organizations
+  - /regions
+  - /sites
+  - /users
+  cts:
+  - /config-module-groups
+  - /config-modules
+  - /config-templates
+  emscertmanager:
+  - /keystore
+  - /truststore
+  apigw:
+  - /active-alarms
+  - /alarms
+  - /events
+  - /health
+  swagger:
+  - /swagger
+  - /redoc
+  - /doc.json
+oauth:
+  enabled: false
+swagger:
+  ingress:
+    enabled: false
+    className: nginx
+    annotations: {}
+    hosts: []
+    tls: []
+oauth2Proxy:
+  ingress:
+    enabled: false
+    className: nginx
+    annotations: {}
+    hosts: []
+    tls: []
+
+ngf:
+  smallcell_support:
+    enabled: true
+  ngf_enabled: true
+  awsMode: false
+  port:
+    http:
+      aws: 80
+    https:
+      onprem: 9443
+  hostname: "emsapi.ems.example.local"
+  allowOrigin: "emsui.ems.example.local"
+  cert:
+    issuer: selfsigned-cluster-issuer
+    commonName: my-selfsigned-ca
+    duration: 8760h
+    renewBefore: 168h
+    privateKey:
+      algorithm: RSA
+      encoding: PKCS1
+      size: 2048
+  paths:
+    toc: [/auth, /clusters, /devices, /networks, /organizations, /regions, /sites, /users]
+    cts: [/config-module-groups, /config-modules, /config-templates]
+    emscertmanager: [/keystore, /truststore]
+    apigw: [/active-alarms, /alarms, /events, /health]
+    swagger: [/swagger, /redoc, /doc.json]
+
+certificate:
+  subject:
+    organizations:
+      - ems-platform

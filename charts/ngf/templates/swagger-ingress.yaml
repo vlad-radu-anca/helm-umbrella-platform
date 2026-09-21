@@ -1,0 +1,57 @@
+
+{{- if .Values.swagger.ingress.enabled -}}
+{{- $endpoint := .Values.endpoint -}}
+{{- if and .Values.swagger.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.swagger.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.swagger.ingress.annotations "kubernetes.io/ingress.class" .Values.swagger.ingress.className}}
+  {{- end }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: ems-platform-swagger
+  {{- with .Values.swagger.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.swagger.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.swagger.ingress.className }}
+  {{- end }}
+  {{- if .Values.swagger.ingress.tls }}
+  tls:
+    {{- range .Values.swagger.ingress.tls }}
+    - hosts:
+        - swagger.{{ $endpoint }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.swagger.ingress.hosts }}
+    - host: swagger.{{ $endpoint }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: swagger
+                port:
+                  number: 42002
+              {{- else }}
+              serviceName: swagger
+              servicePort: 42002
+              {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

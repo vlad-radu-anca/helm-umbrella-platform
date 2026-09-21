@@ -1,0 +1,77 @@
+platform: onprem # or aws
+
+eventcollector:
+  init:
+    enabled: true
+  kafkaCluster:
+    enabled: true
+    replicaCount: 3 # kafka cluster replica
+    transaction:
+      min_isr: 3
+  image: vlad-radu-anca/ems-event-collector
+  tag: 5.0.latest
+  pullPolicy: Always
+  clusteringEnabled: true
+  javaOpts: '-XX:MaxRAMPercentage=50 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp -XX:+UseG1GC -XX:MaxGCPauseMillis=500 -XX:+UseStringDeduplication -XX:+ExitOnOutOfMemoryError'
+      
+  kafkaBootstrapServers: "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  TOCUrlBase: "http://toc-headless:7001"
+  config: |+
+    #ems.kafka.topic.pm=ems-platform-pm-kpis
+    #ems.kafka.topic.pm.error=ems-platform-pm-kpis-ec-errors
+    #ems.kafka.topic.fm=ems-platform-fm-events
+    #ems.kafka.topic.fm.error=ems-platform-fm-events-ec-errors
+    #ems.kafka.topic.error=ems-platform-ec-errors
+    #kafka-streams.cache.max.bytes.buffering=10240
+    #kafka-streams.commit.interval.ms=1000
+    #kafka-streams.metadata.max.age.ms=500
+    #kafka-streams.auto.offset.reset=latest
+  #env:
+  #  QUARKUS_LOG_LEVEL: DEBUG
+  replicaCountClustering: 2  # Replica count when clustering is enabled
+  replicaCountNonClustering: 1  # Replica count when clustering is disabled
+  imagePullSecrets: [name: "regcred"]
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 8080
+
+  resources:
+    limits:
+      cpu: 750m
+      memory: 500Mi
+    requests:
+      cpu: 300m
+      memory: 250Mi
+  
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-large
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+
+  initContainers:
+    curlImage:
+      repo: curlimages/curl
+      tag: 8.12.1
+    busyboxImage:
+      repo: busybox
+      tag: 1.36.1
+  ConnectionUrls:
+    keycloak: http://keycloak/auth
+    elastic: http://elastic:9200
+    spark: http://spark:4041
+    coreApi: http://core-api:9000
+    certsmgmt: http://ems-certs-mgmt:7702
+
+  secrets:
+    internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
+
+securityContext:
+  fsGroup: 10000
+  runAsUser: 10000
+  runAsGroup: 10000

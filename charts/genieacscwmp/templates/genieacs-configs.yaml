@@ -1,0 +1,29 @@
+{{- if .Values.cpeSupport.enabled }}
+---
+apiVersion: v1
+data:
+  GENIEACS_CWMP_INTERFACE: 0.0.0.0
+  GENIEACS_CWMP_PORT: "7547"
+  GENIEACS_CWMP_SSL: "false"
+  GENIEACS_DEBUG: "true"
+  GENIEACS_EXT_DIR: /opt/genieacs/ext
+  GENIEACS_FS_INTERFACE: 0.0.0.0
+  GENIEACS_FS_IP: {{ .Values.loadBalancerIP }}
+  GENIEACS_FS_PORT: "7567"
+  GENIEACS_GPN_NEXT_LEVEL: "3"
+  GENIEACS_GPV_BATCH_SIZE: "24"
+  GENIEACS_LOG_INFORMS: "true"
+  GENIEACS_MONGODB_CONNECTION_URL: mongodb://root-user:password@mongo:27017/genieacs?replicaSet=rs0
+  GENIEACS_NBI_INTERFACE: 0.0.0.0
+  GENIEACS_NBI_PORT: "7557"
+  GENIEACS_SESSION_TIMEOUT: "45"
+  GENIEACS_UI_JWT_SECRET: changeme
+  GENIEACS_CWMP_WORKER_PROCESSES: "{{ .Values.worker_processes }}"
+  GENIEACS_NBI_WORKER_PROCESSES: "{{ .Values.worker_processes }}"
+  GENIEACS_FS_WORKER_PROCESSES: "{{ .Values.worker_processes }}"
+  GENIEACS_UI_WORKER_PROCESSES: "{{ .Values.worker_processes }}"
+  NODE_OPTIONS: --enable-source-maps
+kind: ConfigMap
+metadata:
+  name: genieacs-config-env
+{{- end }}

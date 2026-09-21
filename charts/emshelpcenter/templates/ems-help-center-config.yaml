@@ -1,0 +1,26 @@
+{{- if .Values.emshelpcenter.enabled }}
+---
+apiVersion: v1
+data:
+  app.json: |
+    {
+      "isPublic": false,
+      "versions": [4, 5]
+    }
+kind: ConfigMap
+metadata:
+  name: ems-help-center-app-config
+{{- end }}
+---
+apiVersion: v1
+data:
+  keycloak.json: |
+    {
+      "auth-server-url": "https://{{ .Values.emshelpcenter.emsui_subdomain }}.{{ .Values.endpoint }}/auth",
+      "realm": "DefaultTenant",
+      "resource": "ems-help-center"
+    }
+
+kind: ConfigMap
+metadata:
+  name: ems-help-center-keycloak-config

@@ -1,0 +1,27 @@
+{{- if and .Values.ngf_enabled (not .Values.ngf.awsMode) }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: emsapi-tls-secret
+spec:
+  isCA: true
+  duration: {{ .Values.ngf.cert.duration }}
+  renewBefore: {{ .Values.ngf.cert.renewBefore }}
+  dnsNames:
+  - {{ include "ngf.hostname" . }}
+  subject:
+    organizations:
+    {{- range .Values.certificate.subject.organizations }}
+    - {{ . }}
+    {{- end }}
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: {{ .Values.ngf.cert.issuer }}
+  secretName: emsapi-tls-secret
+  commonName: {{ .Values.ngf.cert.commonName }}
+  privateKey:
+    algorithm: {{ .Values.ngf.cert.privateKey.algorithm }}
+    encoding: {{ .Values.ngf.cert.privateKey.encoding }}
+    size: {{ .Values.ngf.cert.privateKey.size }}
+{{- end }}

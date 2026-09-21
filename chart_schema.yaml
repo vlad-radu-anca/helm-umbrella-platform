@@ -1,0 +1,18 @@
+apiVersion: enum('v2')
+name: regex('^[a-z0-9-]+$')
+description: str()
+type: enum('application', 'library')
+version: regex('^v?\\d+\\.\\d+\\.\\d+(-[a-z0-9]+(\\.\\d+)?)?$')
+appVersion: str()
+maintainers: list(include('maintainer'))
+dependencies: list(include('dependency'), required=False)
+---
+maintainer:
+  name: str()
+  email: str()
+---
+dependency:
+  name: str()
+  version: str()
+  repository: str()
+  condition: str(required=False)

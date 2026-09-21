@@ -1,0 +1,72 @@
+{{- if .Values.swagger.smallcell_support.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swagger
+  labels:
+    {{- include "swagger.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.swagger.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "swagger.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "swagger.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.swagger.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      priorityClassName: ems-platform-high-priority
+      initContainers:
+        - name: wait-for-toc
+          image: {{ .Values.swagger.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.swagger.initContainers.curlImage.tag | default "8.12.1" }}
+          command: [ "/bin/sh", "-c" ]
+          args:
+            - "while [[ $(curl -sIw '%{http_code}' http://toc-headless:7001/health -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the toc to be ready...'; done; echo 'Connection with toc established'"
+      containers:
+        - image: "{{ .Values.swagger.image }}:{{ .Values.swagger.tag }}"
+          imagePullPolicy: {{ .Values.swagger.pullPolicy }}
+          ports:
+            - containerPort: 42002
+              name: http
+          name: swagger
+          resources:
+            {{- toYaml .Values.swagger.resources | nindent 12 }}
+          volumeMounts:
+            - name: swagger-application-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+      restartPolicy: Always
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.swagger.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.swagger.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.swagger.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.swagger.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.swagger.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: swagger-application-config
+          configMap:
+            name: swagger-application-config
+{{- end }}

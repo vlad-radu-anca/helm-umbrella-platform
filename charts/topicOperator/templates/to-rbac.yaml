@@ -1,0 +1,50 @@
+{{- if .Values.topicOperator.kafkaCluster.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: strimzi-topic-operator
+  labels:
+    app: strimzi
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: strimzi-topic-operator
+  labels:
+    app: strimzi
+rules:
+- apiGroups:
+  - "kafka.strimzi.io"
+  resources:
+  - kafkatopics
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - patch
+  - update
+  - delete
+- apiGroups:
+  - "kafka.strimzi.io"
+  resources:
+  - kafkatopics/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: strimzi-topic-operator
+  labels:
+    app: strimzi
+subjects:
+  - kind: ServiceAccount
+    name: strimzi-topic-operator
+roleRef:
+  kind: Role
+  name: strimzi-topic-operator
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

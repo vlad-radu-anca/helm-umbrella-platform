@@ -1,0 +1,18 @@
+{{- if .Values.kafkaTopic.installOperator }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: strimzi-topic-operator
+  labels:
+    app.kubernetes.io/name: entity-operator
+    strimzi.io/component-type: entity-operator
+spec:
+  selector:
+    app.kubernetes.io/name: entity-operator
+    strimzi.io/component-type: entity-operator
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+{{- end }}

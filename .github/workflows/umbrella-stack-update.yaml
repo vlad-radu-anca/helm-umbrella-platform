@@ -1,0 +1,332 @@
+name: Update Umbrella Stack Dependencies
+
+on:
+  workflow_call:
+
+jobs:
+  update-umbrella-dependencies:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Important: ensure we have the latest code
+          ref: main
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install helm
+        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Detect which charts were updated
+        id: detect-updated-charts
+        run: |
+          # Ensure we have the latest state of main
+          git pull origin main
+          
+          # Get the list of modified Chart.yaml files from the version bump commit.
+          # The umbrella's own Chart.yaml counts too: a dependency pin change must
+          # also refresh Chart.lock and republish the umbrella.
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep 'charts/.*/Chart.yaml' || true)
+
+          if [[ -n "$CHANGED_FILES" ]]; then
+            echo "has_chart_updates=true" >> $GITHUB_OUTPUT
+            echo "Chart updates detected:"
+            echo "$CHANGED_FILES"
+
+            # Extract chart names - keep as multi-line
+            CHART_NAMES=$(echo "$CHANGED_FILES" | grep -v 'ems-platform-stack' | sed 's|charts/||g' | sed 's|/Chart.yaml||g')
+            
+            # Use delimiter for multi-line output
+            echo "updated_charts<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHART_NAMES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "has_chart_updates=false" >> $GITHUB_OUTPUT
+            echo "No individual chart updates detected"
+          fi
+
+      - name: Install yq
+        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Verify all umbrella dependencies exist in registry
+        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true'
+        working-directory: ./charts/ems-platform-stack
+        run: |
+          echo "🔎 Checking that every pinned dependency is available in GHCR..."
+
+          # Newly pushed charts can take a moment to become resolvable; retry
+          # briefly per dependency, then report every missing one at once so
+          # the failure is actionable instead of a generic helm error.
+          MISSING=()
+          while IFS='|' read -r name version repo; do
+            [[ "$repo" != oci://* ]] && continue
+            found=false
+            for attempt in 1 2 3 4; do
+              if helm show chart "$repo/$name" --version "$version" >/dev/null 2>&1; then
+                found=true
+                break
+              fi
+              sleep 15
+            done
+            if [[ "$found" == "true" ]]; then
+              echo "  ✅ $name $version"
+            else
+              echo "  ❌ $name $version  (not found at $repo)"
+              MISSING+=("$name@$version")
+            fi
+          done < <(yq eval '.dependencies[] | .name + "|" + .version + "|" + .repository' Chart.yaml)
+
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo "::error file=charts/ems-platform-stack/Chart.yaml::Umbrella dependencies missing from registry: ${MISSING[*]}. Publish them (Publish Helm Chart to OCI -> Run workflow) or fix the pinned versions."
+            exit 1
+          fi
+          echo "✅ All dependencies resolvable"
+
+      - name: Update umbrella chart dependencies with retry
+        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true'
+        working-directory: ./charts/ems-platform-stack
+        run: |
+          echo "🔄 Updating helm dependencies for umbrella chart..."
+
+          # Retry logic for helm dependency update (transient registry errors only;
+          # missing versions are already caught by the verification step above)
+          MAX_ATTEMPTS=3
+          ATTEMPT=1
+          WAIT_TIME=20
+          
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
+            
+            if helm dependency update; then
+              echo "✅ Helm dependency update succeeded"
+              break
+            else
+              if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+                echo "❌ All attempts failed"
+                exit 1
+              else
+                echo "⚠️ Attempt $ATTEMPT failed, waiting $WAIT_TIME seconds before retry..."
+                sleep $WAIT_TIME
+                ((ATTEMPT++))
+                # Increase wait time for each retry
+                WAIT_TIME=$((WAIT_TIME + 30))
+              fi
+            fi
+          done
+          
+          echo "🔨 Building dependencies for umbrella chart..."
+          helm dependency build
+          
+          echo "🧪 Rendering umbrella chart (ems-platform-stack) with helm template..."
+          helm template ems-platform-stack . || {
+            echo "::error file=ems-platform-stack::helm template failed for umbrella chart"
+            exit 1
+          }
+          
+          echo "✅ Helm dependencies updated, built, and validated successfully"
+
+      - name: Check for changes in dependency files
+        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true'
+        id: check-changes
+        working-directory: ./charts/ems-platform-stack
+        run: |
+          echo "🔍 Checking git status for dependency files..."
+          git status --porcelain .
+          
+          echo "🔍 Checking specific files for changes..."
+          
+          # Check if Chart.lock exists and has changes
+          if [[ -f "Chart.lock" ]]; then
+            echo "Chart.lock exists, checking for changes..."
+            if git diff --quiet Chart.lock; then
+              echo "Chart.lock - no changes"
+              CHART_LOCK_CHANGED=false
+            else
+              echo "Chart.lock - has changes"
+              CHART_LOCK_CHANGED=true
+            fi
+          else
+            echo "Chart.lock does not exist"
+            CHART_LOCK_CHANGED=false
+          fi
+          
+          # Check if charts/ directory exists and has changes
+          if [[ -d "charts/" ]]; then
+            echo "charts/ directory exists, checking for changes..."
+            if git diff --quiet charts/; then
+              echo "charts/ directory - no changes"
+              CHARTS_DIR_CHANGED=false
+            else
+              echo "charts/ directory - has changes"
+              CHARTS_DIR_CHANGED=true
+            fi
+          else
+            echo "charts/ directory does not exist"
+            CHARTS_DIR_CHANGED=false
+          fi
+          
+          # Check for untracked files
+          UNTRACKED_FILES=$(git ls-files --others --exclude-standard Chart.lock charts/ || true)
+          if [[ -n "$UNTRACKED_FILES" ]]; then
+            echo "Untracked dependency files found:"
+            echo "$UNTRACKED_FILES"
+            HAS_UNTRACKED=true
+          else
+            echo "No untracked dependency files"
+            HAS_UNTRACKED=false
+          fi
+          
+          # Determine if we have any changes
+          if [[ "$CHART_LOCK_CHANGED" == "true" || "$CHARTS_DIR_CHANGED" == "true" || "$HAS_UNTRACKED" == "true" ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✅ Changes detected in dependency files"
+            echo "Changes summary:"
+            echo "  Chart.lock changed: $CHART_LOCK_CHANGED"
+            echo "  charts/ changed: $CHARTS_DIR_CHANGED" 
+            echo "  Untracked files: $HAS_UNTRACKED"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No changes in dependency files"
+          fi
+
+      - name: Commit and push dependency updates
+        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true' && steps.check-changes.outputs.has_changes == 'true'
+        run: |
+          git add charts/ems-platform-stack/Chart.lock charts/ems-platform-stack/charts/
+          
+          # Get the updated charts from the previous commit
+          UPDATED_CHARTS="${{ steps.detect-updated-charts.outputs.updated_charts }}"
+          
+          git commit -m "chore(ems-platform-stack): update helm dependencies after chart releases
+
+          Updated umbrella chart dependencies following version bumps:
+          $(echo "$UPDATED_CHARTS" | tr ' ' '\n' | sed 's/^/- /')
+          
+          Parent commit: ${{ github.sha }}"
+          
+          # Pull latest changes and rebase before pushing
+          echo "Pulling latest changes from main..."
+          git pull --rebase origin main
+          
+          # Push with retry logic
+          MAX_ATTEMPTS=3
+          ATTEMPT=1
+          
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Push attempt $ATTEMPT of $MAX_ATTEMPTS..."
+            
+            if git push origin main; then
+              echo "Successfully pushed changes"
+              break
+            else
+              if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+                echo "Failed to push after $MAX_ATTEMPTS attempts"
+                exit 1
+              else
+                echo "Push failed, pulling latest changes and retrying..."
+                git pull --rebase origin main
+                ((ATTEMPT++))
+              fi
+            fi
+          done
+
+      - name: Set up helm for publishing
+        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true' && steps.check-changes.outputs.has_changes == 'true'
+        uses: azure/setup-helm@v5.0.1
+        with:
+            version: 'v3.12.0'
+
+      - name: Publish updated umbrella chart
+        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true' && steps.check-changes.outputs.has_changes == 'true'
+        working-directory: ./charts/ems-platform-stack
+        run: |
+          echo "📦 Publishing updated umbrella chart to OCI registry..."
+          
+          CHART_NAME=$(yq e '.name' "Chart.yaml")
+          CHART_VERSION=$(yq e '.version' "Chart.yaml")
+          
+          echo "📊 Chart details:"
+          echo "  Name: $CHART_NAME"
+          echo "  Version: $CHART_VERSION"
+          
+          echo "🔄 Updating dependencies before packaging..."
+          helm dependency update
+          
+          echo "📦 Packaging umbrella chart..."
+          helm package . --destination ../..
+          
+          echo "🚀 Pushing $CHART_NAME@$CHART_VERSION to GHCR..."
+          cd ../..
+          helm push "${CHART_NAME}-${CHART_VERSION}.tgz" oci://ghcr.io/vlad-radu-anca
+          
+          echo "✅ Successfully published umbrella chart $CHART_NAME@$CHART_VERSION"
+
+      - name: Create summary
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const hasChartUpdates = "${{ steps.detect-updated-charts.outputs.has_chart_updates }}" || "false";
+            const hasChanges = "${{ steps.check-changes.outputs.has_changes }}" || "false";
+            const updatedCharts = `${{ steps.detect-updated-charts.outputs.updated_charts }}` || "";
+            
+            let summary = `## 🗿 Umbrella Stack Dependencies Update\n\n`;
+            summary += `*Triggered by post-merge workflow*\n\n`;
+            
+            if (hasChartUpdates === 'true') {
+              summary += `Following the version bump commit, the umbrella chart dependencies have been processed.\n\n`;
+              
+              if (hasChanges === 'true') {
+                summary += `### ✅ Dependencies Updated Successfully\n`;
+                summary += `- Helm dependencies updated and built\n`;
+                summary += `- Chart.lock and dependency charts updated\n`;
+                summary += `- Changes committed to main branch\n`;
+                summary += `- Updated umbrella chart published to registry\n\n`;
+                
+                if (updatedCharts) {
+                  summary += `### 📊 Charts that triggered the update:\n`;
+                  // Split by newlines and filter out empty lines
+                  const charts = updatedCharts.split('\n').filter(c => c.trim());
+                  charts.forEach(chart => {
+                    summary += `- ${chart}\n`;
+                  });
+                }
+              } else {
+                summary += `### ℹ️ No Dependency Updates Needed\n`;
+                summary += `- Dependencies are already up to date\n`;
+                summary += `- No changes committed\n`;
+                summary += `- No publishing required\n`;
+              }
+            } else {
+              summary += `### ⏭️ Skipped\n`;
+              summary += `No individual chart versions were modified.\n`;
+            }
+            
+            summary += `\n---\n`;
+            summary += `Commit: ${{ github.sha }}`;
+            
+            console.log("Summary output:");
+            console.log(summary);
+            
+            // Write to summary
+            await core.summary
+              .addRaw(summary)
+              .write();

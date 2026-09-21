@@ -1,0 +1,39 @@
+{{- if .Values.cpeSupport.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: k8s-landevices-job
+spec:
+  schedule: "0 8 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          imagePullSecrets:
+            - name: regcred
+          containers:
+            - name: k8s-landevices-job
+              image: "{{ .Values.cronJobs.LanDevices.image }}:{{ .Values.cronJobs.LanDevices.tag }}"
+              imagePullPolicy: Always
+              args:
+                - /home/ems/k8sLanDevicesJob/execute.sh
+              envFrom:
+                - configMapRef:
+                    name: elastic-auth-env
+                - configMapRef:
+                    name: elastic-host-env
+                - configMapRef:
+                    name: genieacs-config-env
+                - configMapRef:
+                    name: mongo-auth-env
+                - configMapRef:
+                    name: mongo-config-env
+              env:
+                - name: K8S_LANDEVICES_JOB_EXIT_TIME
+                  value: "{{ .Values.cronJobs.LanDevices.lanDevicesExitTime }}"
+              resources: {}
+          restartPolicy: Never
+{{- end }}

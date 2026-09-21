@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "endpoint": { "type": "string" },
+    "emsui_subdomain": { "type": "string" },
+    "platform": {
+      "type": "string",
+      "enum": ["onprem", "aws"]
+    },
+    "dev_mode": { "type": "boolean" },
+    "BRAND_NAME": { "type": "string" },
+    "grafana": {
+      "type": "object",
+      "properties": {
+        "image": { "type": "string" },
+        "tag": { "type": "string" },
+        "pullPolicy": { "type": "string" },
+        "host": { "type": "string" },
+        "port": { "type": "string" }
+      },
+      "required": ["image", "tag", "pullPolicy", "host", "port"]
+    },
+    "smallcell_support": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      },
+      "required": ["enabled"]
+    },
+    "ConnectionUrls": {
+      "type": "object",
+      "properties": {
+        "pgDb": {
+          "type": "object",
+          "properties": {
+            "host": { "type": "string" },
+            "port": { "type": "integer" },
+            "user": { "type": "string" }
+          },
+          "required": ["host", "port", "user"]
+        },
+        "keycloak": { "type": "string", "format": "uri" }
+      },
+      "required": ["pgDb", "keycloak"]
+    },
+    "smtp": {
+      "type": "object",
+      "properties": {
+        "senderEmail": { "type": "string", "format": "email" },
+        "server": { "type": "string" },
+        "port": { "type": "integer" }
+      },
+      "required": ["senderEmail", "server", "port"]
+    },
+    "initContainers": {
+      "type": "object",
+      "properties": {
+        "curlImage": {
+          "type": "object",
+          "properties": {
+            "repo": { "type": "string" },
+            "tag": { "type": "string" }
+          },
+          "required": ["repo", "tag"]
+        },
+        "busyboxImage": {
+          "type": "object",
+          "properties": {
+            "repo": { "type": "string" },
+            "tag": { "type": "string" }
+          },
+          "required": ["repo", "tag"]
+        }
+      },
+      "required": ["curlImage", "busyboxImage"]
+    },
+    "init_client": {
+      "type": "object",
+      "properties": {
+        "image": { "type": "string" },
+        "tag": { "type": "string" },
+        "pullPolicy": { "type": "string" }
+      },
+      "required": ["image", "tag", "pullPolicy"]
+    },
+    "cpe_support": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      },
+      "required": ["enabled"]
+    },
+    "enb_support": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      },
+      "required": ["enabled"]
+    },
+    "CronJobs": {
+      "type": "object",
+      "properties": {
+        "LanDevices": {
+          "type": "object",
+          "properties": {
+            "image": { "type": "string" },
+            "tag": { "type": "string" },
+            "lanDevicesExitTime": { "type": "integer" }
+          },
+          "required": ["image", "tag", "lanDevicesExitTime"]
+        },
+        "postgres": {
+          "type": "object",
+          "properties": {
+            "backup_enabled": { "type": "boolean" },
+            "image": { "type": "string" },
+            "tag": { "type": "string" },
+            "local_path": { "type": "string" },
+            "recover_days": { "type": "integer" },
+            "node_name": { "type": "string" }
+          },
+          "required": ["backup_enabled", "image", "tag", "local_path", "recover_days", "node_name"]
+        },
+        "SyncPreferredLocation": {
+          "type": "object",
+          "properties": {
+            "image": { "type": "string" },
+            "tag": { "type": "string" },
+            "exitTime": { "type": "integer" },
+            "keycloakClientSecret": { "type": "string" }
+          },
+          "required": ["image", "tag", "exitTime", "keycloakClientSecret"]
+        }
+      }
+    },
+    "pg_roles": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": { "type": "string" },
+        "tag": { "type": "string" },
+        "pullPolicy": { "type": "string" }
+      },
+      "required": ["enabled", "image", "tag", "pullPolicy"]
+    },
+    "toc": {
+      "type": "object",
+      "properties": {
+        "smtp": {
+          "type": "object",
+          "properties": {
+            "senderEmail": { "type": "string", "format": "email" },
+            "server": { "type": "string" },
+            "port": { "type": "integer" },
+            "ssl": { "type": "boolean" },
+            "startTls": { "type": "boolean" }
+          },
+          "required": ["senderEmail", "server", "port", "ssl", "startTls"]
+        }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "required": [
+    "endpoint",
+    "emsui_subdomain",
+    "platform",
+    "dev_mode",
+    "BRAND_NAME",
+    "grafana",
+    "smallcell_support",
+    "ConnectionUrls",
+    "smtp",
+    "initContainers",
+    "init_client",
+    "cpe_support",
+    "enb_support",
+    "CronJobs",
+    "pg_roles",
+    "toc",
+    "secrets"
+  ]
+}

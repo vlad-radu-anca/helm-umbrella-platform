@@ -1,0 +1,100 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "global": {
+        "type": "object",
+        "description": "Global values passed from the umbrella chart",
+        "additionalProperties": true
+    },
+      "ConnectionUrls": {
+        "type": "object",
+        "properties": {
+          "mongo": {
+            "type": "object",
+            "properties": {
+              "uri": { "type": "string" }
+            },
+            "required": ["uri"]
+          }
+        },
+        "required": ["mongo"]
+      },
+      "mongoInit": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "image": { "type": "string" },
+          "tag": { "type": "string" },
+          "pullPolicy": { "type": "string" },
+          "imagePullSecrets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" }
+              },
+              "required": ["name"]
+            }
+          },
+          "nameOverride": { "type": "string" },
+          "fullnameOverride": { "type": "string" },
+          "podAnnotations": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "resources": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "nodeSelector": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "object" },
+                { "type": "null" }
+              ]
+            }
+          },
+          "tolerations": {
+            "type": "array",
+            "items": { "type": "object" }
+          },
+          "affinity": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "cfg": {
+            "type": "object",
+            "properties": {
+              "credsUsername": { "type": "string" },
+              "credsSecret": { "type": "string" },
+              "credsDir": { "type": "string" },
+              "users": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "credsDir": { "type": "string" },
+                    "credsSecret": { "type": "string" },
+                    "dbName": { "type": "string" }
+                  },
+                  "required": ["credsDir", "credsSecret", "dbName"]
+                }
+              },
+              "skipUpdate": { "type": "boolean" }
+            },
+            "required": ["credsUsername", "credsSecret", "credsDir", "users", "skipUpdate"]
+          },
+          "waitForServer": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": ["enabled", "image", "tag", "pullPolicy", "imagePullSecrets", "cfg", "waitForServer"]
+      }
+    },
+    "required": ["ConnectionUrls", "mongoInit"]
+  }
+  

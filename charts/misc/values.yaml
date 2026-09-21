@@ -1,0 +1,104 @@
+endpoint: "ems.example.local"
+
+emsui_subdomain: "emsui"
+
+platform: onprem #or aws
+
+dev_mode: true
+
+BRAND_NAME: "ems-platform"
+
+grafana: 
+  image: vlad-radu-anca/grafana-job
+  tag: 5.0.latest
+  pullPolicy: Always
+  host: grafana
+  port: "3001"
+
+smallcell_support: # small cell 5g support
+  enabled: true
+
+ConnectionUrls:
+  pgDb:
+    host: postgresql-hl
+    port: 5432
+    user: ems-platform
+  keycloak: http://keycloak/auth
+  
+smtp:
+  senderEmail: "ems-smtp@example.com"
+  server: "mailpit"
+  port: 1025
+
+initContainers:
+  curlImage:
+    repo: curlimages/curl
+    tag: 8.12.1
+  busyboxImage:
+    repo: busybox
+    tag: 1.36.1
+
+init_client:
+  image: vlad-radu-anca/k8s-init-client-job
+  tag: 5.0.latest
+  pullPolicy: Always
+
+cpe_support:
+  enabled: false
+
+enb_support:
+  enabled: false
+
+CronJobs:
+  LanDevices:
+    image: vlad-radu-anca/k8s-landevices-job
+    tag: 5.0.latest
+    lanDevicesExitTime: 36000
+  postgres:
+    backup_enabled: false
+    image: postgres
+    tag: "15.2"
+    local_path: "/opt/ems-platform/backup/postgres-snapshot"
+    recover_days: 5
+    node_name: master-1
+  SyncPreferredLocation:
+    image: vlad-radu-anca/k8s-syncpreferredloc-job
+    tag: 5.0.latest
+    exitTime: 36000
+    keycloakClientSecret: changeme
+
+pg_roles:
+  enabled: false
+  image: vlad-radu-anca/ems-insert-roles
+  tag: 5.0.latest
+  pullPolicy: Always
+
+toc:
+  smtp:
+    senderEmail: "ems-smtp@example.com"
+    server: "smtp.example.com"
+    port: 587
+    ssl: true
+    startTls: false
+
+secrets:
+  internal_pg_client: "ems-platform_internal_pg_client_xlv"
+  external_keycloak_admin_client: "ems-platform_external_keycloak_admin_client_xlv"
+  internal_keycloak_core_api_client: "ems-platform_internal_keycloak_core_api_client_xlv"
+  internal_keycloak_toc_client: "ems-platform_internal_keycloak_toc_client_xlv"
+  external_smtp_default_user_client: "ems-platform_external_smtp_default_user_client_xlv"
+  internal_elastic_admin_client: "ems-platform_internal_elastic_admin_client_xlv"
+  internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
+  external_rds_keycloak_client: "ems-platform_external_rds_keycloak_client_xlv"
+  internal_gh_ctd_repo_client: "ems-platform_internal_gh_ctd_repo_client_xlv"
+  internal_gh_sw_image_repo_client: "ems-platform_internal_gh_sw_image_repo_client_xlv"
+  internal_gh_help_center_repo_client: "ems-platform_internal_gh_help_center_repo_client_xlv"
+  internal_genieacs: "ems-platform_internal_genieacs_xlv"
+  external_smtp_default_user_client: "ems-platform_external_smtp_default_user_client_xlv"
+  internal_spark_identity_secret: "ems-platform_internal_spark_identity_secret_xlv"
+  internal_spark_trust_secret: "ems-platform_internal_spark_trust_secret_xlv"
+  external_ems_aoa_client: "ems-platform_external_ems_aoa_client_xlv"
+  external_mongo_admin_secret: "ems-platform_external_mongo_admin_secret_xlv"
+  external_mongo_emsdb_secret: "ems-platform_external_mongo_emsdb_secret_xlv"
+  identity: spark-identity-secret
+  trust: spark-trust-secret

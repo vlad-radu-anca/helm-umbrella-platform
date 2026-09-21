@@ -1,0 +1,61 @@
+
+{{- if .Values.toc.ingress.enabled -}}
+{{- $fullName := include "toc.fullname" . -}}
+{{- $svcPort := .Values.toc.service.port -}}
+{{- $endpoint := .Values.endpoint -}}
+{{- if and .Values.toc.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.toc.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.toc.ingress.annotations "kubernetes.io/ingress.class" .Values.toc.ingress.className}}
+  {{- end }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "toc.labels" . | nindent 4 }}
+  {{- with .Values.toc.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.toc.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.toc.ingress.className }}
+  {{- end }}
+  {{- if .Values.toc.ingress.tls }}
+  tls:
+    {{- range .Values.toc.ingress.tls }}
+    - hosts:
+        - toc.{{ $endpoint }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.toc.ingress.hosts }}
+    - host: toc.{{ $endpoint }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: toc
+                port:
+                  number: {{ $svcPort }}
+              {{- else }}
+              serviceName: toc
+              servicePort: {{ $svcPort }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,90 @@
+{{- if .Values.mongoInit.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.mongoInit.nameOverride }}mongo-initclient-job
+spec:
+  ttlSecondsAfterFinished: 18000
+  template:
+    spec:
+      {{- if .Values.mongoInit.serviceAccountName }}
+      serviceAccountName: {{ .Values.mongoInit.serviceAccountName }}
+      {{- end }}
+      securityContext:
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.mongoInit.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.mongoInit.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.mongoInit.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.mongoInit.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mongoInit.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Never
+      {{- with .Values.mongoInit.waitForServer }}
+      initContainers:
+        - image: "{{ .Values.mongoInit.image }}:{{ .Values.mongoInit.tag }}"
+          imagePullPolicy: {{ .Values.mongoInit.pullPolicy }}
+          name: wait-for-dependency
+      {{- if .command }}
+          command: {{ .command }}
+      {{- else }}
+          command: ['bash', '-c', 'until mongosh "{{ .Values.ConnectionUrls.mongo.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)"; do echo "Waiting for MongoDB to be available"; sleep 2; done;']
+      {{- end }}
+      {{- end }}
+      containers:
+        - image: "{{ .Values.mongoInit.image }}:{{ .Values.mongoInit.tag }}"
+          imagePullPolicy: {{ .Values.mongoInit.pullPolicy }}
+          name: {{ .Values.mongoInit.nameOverride }}mongo-initclient
+          workingDir: /tmp/mongo-initclient-job
+      {{- if .Values.mongoInit.command -}}
+          command: {{ .Values.mongoInit.command }}
+      {{- else }}
+          command: ['bash', '-c', 'mongosh --verbose --nodb --norc --file mongo-create-users.js']
+      {{- end }}
+          volumeMounts:
+            - mountPath: /tmp/mongo-initclient-job
+              name: mongo-initclient-config
+            - mountPath: {{ .Values.mongoInit.cfg.credsDir }}
+              name: {{ .Values.mongoInit.cfg.credsSecret }}
+      {{- range $.Values.mongoInit.cfg.users }}
+            - mountPath: {{ .credsDir }}
+              name: {{ .credsSecret }}
+      {{- end }} 
+          resources:
+            {{- toYaml .Values.mongoInit.resources | nindent 12 }}
+      volumes:
+        - name: mongo-initclient-config
+          configMap:
+            name: {{ .Values.mongoInit.nameOverride }}mongo-initclient-config
+        - name: {{ .Values.mongoInit.cfg.credsSecret }}
+          secret:
+            defaultMode: 420
+            optional: false
+            secretName: {{ .Values.mongoInit.cfg.credsSecret }}
+        {{- range $.Values.mongoInit.cfg.users }}
+        - name: {{ .credsSecret }}
+          secret:
+            defaultMode: 420
+            optional: false
+            secretName: {{ .credsSecret }}
+        {{- end }} 
+{{- end }}

@@ -1,0 +1,32 @@
+{{- if .Values.eventcollector.kafkaCluster.enabled }}
+{{- if and .Values.eventcollector.serviceAccount .Values.global.eventcollector.serviceAccount.create }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ template "eventcollector.serviceAccountName" . }}
+  annotations:
+    eks.amazonaws.com/role-arn: "{{ .Values.global.secrets_store_csi_role_arn }}"
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ecrole
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ecrolebinding
+subjects:
+- kind: ServiceAccount
+  name: {{ template "eventcollector.serviceAccountName" . }}
+roleRef:
+  kind: Role
+  name: ecrole
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+{{- end }}

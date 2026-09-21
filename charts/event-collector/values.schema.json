@@ -1,0 +1,317 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "EventCollector Helm Chart Values Schema",
+  "description": "Schema validation for EventCollector Helm chart values",
+  "required": ["platform", "eventcollector"],
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["onprem", "aws"],
+      "description": "Platform where the application will be deployed"
+    },
+    "eventcollector": {
+      "type": "object",
+      "required": [
+        "image",
+        "tag",
+        "pullPolicy",
+        "clusteringEnabled",
+        "kafkaBootstrapServers",
+        "TOCUrlBase",
+        "replicaCountClustering",
+        "replicaCountNonClustering"
+      ],
+      "properties": {
+        "kafkaCluster": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether Kafka cluster is enabled"
+            },
+            "replicaCount": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Number of Kafka cluster replicas"
+            },
+            "transaction": {
+              "type": "object",
+              "properties": {
+                "min_isr": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Minimum in-sync replicas for Kafka transactions"
+                }
+              }
+            }
+          }
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._/-]+$",
+          "description": "Container image repository"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Container image tag"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"],
+          "description": "Image pull policy"
+        },
+        "clusteringEnabled": {
+          "type": "boolean",
+          "description": "Whether clustering is enabled for the event collector"
+        },
+        "javaOpts": {
+          "type": "string",
+          "description": "Java options for the JVM"
+        },
+        "kafkaBootstrapServers": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9.-]+:[0-9]+$",
+          "description": "Kafka bootstrap servers connection string"
+        },
+        "TOCUrlBase": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL for TOC service"
+        },
+        "config": {
+          "type": "string",
+          "description": "Additional configuration as string"
+        },
+        "env": {
+          "type": "object",
+          "patternProperties": {
+            "^[A-Z_][A-Z0-9_]*$": {
+              "type": "string"
+            }
+          },
+          "description": "Environment variables"
+        },
+        "replicaCountClustering": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Number of replicas when clustering is enabled"
+        },
+        "replicaCountNonClustering": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Number of replicas when clustering is disabled"
+        },
+        "imagePullSecrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name of the image pull secret"
+              }
+            }
+          },
+          "description": "List of image pull secrets"
+        },
+        "nameOverride": {
+          "type": "string",
+          "description": "Override for the name of the chart"
+        },
+        "fullnameOverride": {
+          "type": "string",
+          "description": "Override for the fullname of the chart"
+        },
+        "podAnnotations": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9._/-]+$": {
+              "type": "string"
+            }
+          },
+          "description": "Annotations to add to pods"
+        },
+        "service": {
+          "type": "object",
+          "required": ["type", "port"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"],
+              "description": "Kubernetes service type"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "description": "Service port number"
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^[0-9]+m?$",
+                  "description": "CPU limit"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^[0-9]+[KMGT]?i?$",
+                  "description": "Memory limit"
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "pattern": "^[0-9]+m?$",
+                  "description": "CPU request"
+                },
+                "memory": {
+                  "type": "string",
+                  "pattern": "^[0-9]+[KMGT]?i?$",
+                  "description": "Memory request"
+                }
+              }
+            }
+          }
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "object" },
+              { "type": "null" }
+            ]
+          }
+        },
+        "tolerations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "operator": {
+                "type": "string",
+                "enum": ["Equal", "Exists"]
+              },
+              "value": {
+                "type": "string"
+              },
+              "effect": {
+                "type": "string",
+                "enum": ["NoSchedule", "PreferNoSchedule", "NoExecute"]
+              },
+              "tolerationSeconds": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "description": "Pod tolerations"
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Pod affinity and anti-affinity rules"
+        },
+        "initContainers": {
+          "type": "object",
+          "required": ["curlImage", "busyboxImage"],
+          "properties": {
+            "curlImage": {
+              "type": "object",
+              "required": ["repo", "tag"],
+              "properties": {
+                "repo": {
+                  "type": "string",
+                  "description": "Curl init container image repository"
+                },
+                "tag": {
+                  "type": "string",
+                  "description": "Curl init container image tag"
+                }
+              }
+            },
+            "busyboxImage": {
+              "type": "object",
+              "required": ["repo", "tag"],
+              "properties": {
+                "repo": {
+                  "type": "string",
+                  "description": "Busybox init container image repository"
+                },
+                "tag": {
+                  "type": "string",
+                  "description": "Busybox init container image tag"
+                }
+              }
+            }
+          }
+        },
+        "ConnectionUrls": {
+          "type": "object",
+          "required": ["keycloak", "elastic"],
+          "properties": {
+            "keycloak": {
+              "type": "string",
+              "format": "uri",
+              "description": "Keycloak service URL"
+            },
+            "elastic": {
+              "type": "string",
+              "format": "uri",
+              "description": "Elasticsearch service URL"
+            },
+            "spark": {
+              "type": "string",
+              "format": "uri",
+              "description": "Spark service URL"
+            },
+            "coreApi": {
+              "type": "string",
+              "format": "uri",
+              "description": "Diesel service URL"
+            },
+            "certsmgmt": {
+              "type": "string",
+              "format": "uri",
+              "description": "Certificate management service URL"
+            }
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "required": ["internal_elastic_client"],
+          "properties": {
+            "internal_elastic_client": {
+              "type": "string",
+              "description": "Internal Elasticsearch client secret name (used for AWS CSI)"
+            }
+          }
+        }
+      }
+    }
+  }
+}

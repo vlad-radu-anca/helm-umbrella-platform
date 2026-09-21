@@ -1,0 +1,125 @@
+apiVersion: v1
+data:
+  ems-config.json: |+
+    {
+      "description": "this is the reference file for environment properties",
+      "ENV_NAME": "local",
+      "DIESEL_URL": {
+        "type": "diesel",
+        "url": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000",
+        "X-Api-Key": "{{ .Values.apiKey }}"
+      },
+      "ELASTIC_URL": {
+        "type": "elastic",
+        "url": "{{ .Values.spark.ConnectionUrls.elastic }}",
+        "Authorization": "Basic ZWxhc3RpYzplbGFzdGljUGFzcw=="
+      },
+      "ems-collector": {
+        "ACS_ENABLED": "{{ .Values.spark.cpe_support.enabled }}",
+        "ENB_ENABLED": "{{ .Values.spark.enb_support.enabled }}",
+        "SMALLCELL_ENABLED": "{{ .Values.spark.smallcell_support.enabled }}",
+        "SPC_ENABLED": "{{ .Values.spark.spc_support.enabled }}",
+        "SPC_LOADBALANCER_ADDRESS": "{{ .Values.loadBalancerIP }}",
+        "SPC_IPADDRESS": "{{ .Values.spark.spc_support.address }}",
+        "SPC_SN": "{{ .Values.spark.spc_support.serial_number }}",
+        "SPC_TO_SPARK_WSS_ADDRESS": "{{ .Values.spark.spc_support.wss_address }}",
+        "SPC_NETCONF_CALLHOME_PORT": 4336,
+        "SPC_ORAN_WEBSOCKET_PORT": 4044,
+        "SMALLCELL_LOADBALANCER_ADDRESS": "https://{{ .Values.loadBalancerIP }}:4043",
+        "ACTOR_WORKERS": 600,
+        "DISCOVERY_ENABLED": "true",
+        "REST_ENABLED": "true",
+        "SPARK_NETCONF_CALLHOME_PORT": 4335,
+        "SPARK_REST_PORT": 4041,
+        "SPARK_ORAN_WEBSOCKET_PORT": 4043,
+        "SPARK_POLLING_INTERVAL": 30,
+        "SPARK_INVENTORY_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest",
+        "SPARK_ACS_URL": "http://genieacsnbi.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:7557/devices",
+        "ACS_META_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/meta/query?deviceType=cpe",
+        "SPARK_ELASTIC_URL": [
+          "{{ .Values.spark.ConnectionUrls.elastic }}/"
+        ],
+        "ENB_INVENTORY_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/device/enb",
+        "ENB_META_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/meta/query?deviceType=enb",
+        "ENB_ELASTIC_URL": [
+          "{{ .Values.spark.ConnectionUrls.elastic }}/"
+        ],
+        {{- if .Values.spark.kafkaCluster.enabled }}
+        "SMALLCELL_KAFKA": {
+          "bootstrap.servers" : "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+        },
+        {{- end }}
+        "SNMP_HTTP_READ_TIMEOUT_SECS" : 5,
+        "ENB_HTTP_CONN_TIMEOUT_SECS"  : 5,
+        "ENB_HTTP_READ_TIMEOUT_SECS"  : 5,
+        "INV_HTTP_CONN_TIMEOUT_SECS"  : 10,
+        "INV_HTTP_READ_TIMEOUT_SECS"  : 30,
+        "ACS_HTTP_READ_TIMEOUT_SECS"  : 15,
+        "ENB_EVENTS_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/device/",
+        "ENB_RECEIVER_PROPERTIES": {
+        },
+        "ACS_RECEIVER_PROPERTIES": {
+          "INFORM_INTERVAL": "300"
+        },
+        "ENB_INVENTORY_PROPERTIES": {
+          "X-Api-Key": "{{ .Values.apiKey }}"
+        },
+        "IGNORE_FIELDS": {
+          "inv-enb": "tags,deviceInfo",
+          "inv-cpe": "tags,deviceInfo"
+        },
+         "cpe-status": [
+           {
+             "THRESHOLD": "PT0H",
+             "STATE": "operational"
+           },
+           {
+             "THRESHOLD": "PT1H",
+             "STATE": "degraded"
+           },
+           {
+             "THRESHOLD": "PT2H",
+             "STATE": "missing"
+           },
+           {
+             "THRESHOLD": "P7D",
+             "STATE": "deleted"
+           }
+         ]
+      },
+      "ems-discovery": {
+        "EVENTS_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/device/",
+        "CONFIG_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/react/ems.snmprest.discovery.config",
+        "WEBHOOK_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/ems-discovery/foundEnb"
+      },
+      "ems-gateway": {
+        "REPORT_TOKEN": "9523577094",
+        "BULK_GROUP_BY": 100,
+        "BULK_GROUP_LIMIT": 1000
+      },
+      "ems-notifications": {
+        "SSE_NOTIFICATION_WORKER": 5,
+        "SSE_SUBSCRIPTION_WORKER": 5,
+        "SSE_ENB_EVENT_WORKER": 2,
+        "SSE_ENB_SNMP_PROXY_ENABLED": "{{ .Values.spark.sse_enb_snmp_proxy_enabled }}",
+        "SSE_ENB_SNMP_PROXY_URL": "http://snmpproxy.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:16162/rest/v1/notification"
+      },
+      "ems-ui": {
+      },
+      "ems-snmpproxy": {
+        "SNMPPROXY_HOST_NAME": "0.0.0.0",
+        "SNMPPROXY_AGENT_PORT": {{ .Values.spark.snmpproxy_agent_port }},
+        "SNMPPROXY_AGENT_ENGINEID": "80:8F:82:01:C0:A8:05:1C",
+        "SNMPPROXY_NOTIFICATION_PORT": {{ .Values.spark.snmpproxy_notification_port }},
+        "SNMPPROXY_TRAP_PORT": {{ .Values.spark.snmpproxy_trap_port }},
+        "SNMPPROXY_MEMORY": "{{ .Values.spark.snmpproxy_memory }}",
+        "SNMPPROXY_JVM_OPTIONS": "{{ .Values.spark.snmpproxy_jvm_options }}",
+        "SNMPPROXY_CLIENT_URL": "http://snmpproxy.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:16162/rest/v1/notification",
+        "NUM_SNMP_ACTOR_WORKERS":10,
+        "USER_TARGETS": [],
+        "COMMUNITY_TARGETS": []
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: ems-config

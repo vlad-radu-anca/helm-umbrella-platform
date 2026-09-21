@@ -1,0 +1,298 @@
+suite: test deployment
+templates:
+  - api-gw-deployment.yaml
+tests:
+  - it: should not render when smallcell_support is disabled
+    set:
+      apigw.smallcell_support.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render deployment when smallcell_support is enabled
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: apigw
+
+  - it: should use correct image and tag
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.image: vlad-radu-anca/apigw
+      apigw.tag: "5.0.latest"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "vlad-radu-anca/apigw:5.0.latest"
+
+  - it: should set correct replica count
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.replicaCount: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should set security context correctly
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 10000
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 10000
+      - equal:
+          path: spec.template.spec.securityContext.runAsGroup
+          value: 10000
+
+  - it: should set priority class
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: ems-platform-high-priority
+
+  - it: should mount config volume
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: apigw-application-config
+            configMap:
+              name: apigw-application-config
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: apigw-application-config
+            mountPath: /app/config/application.yaml
+            subPath: application.yaml
+
+  - it: should mount elastic secrets for onprem platform
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: onprem
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: elastic-client-secrets
+            secret:
+              secretName: internal-elastic-admin-client
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: elastic-client-secrets
+            mountPath: "/opt/ems-platform/config/elastic"
+            readOnly: true
+
+  - it: should mount elastic secrets for aws platform using CSI
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: aws
+      apigw.secrets.internal_elastic_client: "ems-platform-internal-elastic-client-xlv"
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: elastic-client-secrets
+            csi:
+              driver: secrets-store.csi.k8s.io
+              readOnly: true
+              volumeAttributes:
+                secretProviderClass: "ems-platform-internal-elastic-client-xlv"
+
+  - it: should use aws node selector when platform is aws
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: aws
+      apigw.nodeSelector.aws:
+        karpenter-node: ems-platform-autoscalernode-large
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector
+          value:
+            karpenter-node: ems-platform-autoscalernode-large
+
+  - it: should use onprem node selector when platform is onprem
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: onprem
+      apigw.nodeSelector.onprem:
+        node-type: onprem-worker
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector
+          value:
+            node-type: onprem-worker
+
+  - it: should set resources correctly
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.resources:
+        limits:
+          cpu: 500m
+          memory: 1000Mi
+        requests:
+          cpu: 250m
+          memory: 500Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            limits:
+              cpu: 500m
+              memory: 1000Mi
+            requests:
+              cpu: 250m
+              memory: 500Mi
+
+  - it: should configure mongodb init container correctly for onprem
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: onprem
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: "public.ecr.aws/bitnami/mongodb:8.0.6-debian-12-r0"
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: MONGO_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: external-mongo-emsdb-secret
+                key: mongo-username
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: MONGO_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-mongo-emsdb-secret
+                key: mongo-password
+
+  - it: should configure mongodb init container correctly for aws
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: aws
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: "public.ecr.aws/bitnami/mongodb:8.0.6-debian-12-r0"
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: MONGO_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: mongo-emsdb-client
+                key: mongo-username
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: MONGO_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mongo-emsdb-client
+                key: mongo-password
+
+  - it: should configure init container with proper name
+    set:
+      apigw.smallcell_support.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-mongo
+
+  - it: should configure init container with proper command for mongodb check
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: onprem
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].command
+          content: "bash"
+      - contains:
+          path: spec.template.spec.initContainers[0].command
+          content: "-c"
+
+  - it: should mount mongodb secrets volume for onprem
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: onprem
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mongo-emsdb-secrets
+            secret:
+              secretName: external-mongo-emsdb-secret
+
+  - it: should mount mongodb secrets volume for aws using CSI
+    set:
+      apigw.smallcell_support.enabled: true
+      platform: aws
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mongo-emsdb-secrets
+            csi:
+              driver: secrets-store.csi.k8s.io
+              readOnly: true
+              volumeAttributes:
+                secretProviderClass: mongoatlas-emsdb-secrets
+
+  - it: should set tolerations when provided
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.tolerations:
+        - key: node-type
+          operator: Equal
+          value: api-gateway
+          effect: NoSchedule
+    asserts:
+      - equal:
+          path: spec.template.spec.tolerations
+          value:
+            - key: node-type
+              operator: Equal
+              value: api-gateway
+              effect: NoSchedule
+
+  - it: should set affinity when provided
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - worker
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity
+          value:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-type
+                    operator: In
+                    values:
+                    - worker

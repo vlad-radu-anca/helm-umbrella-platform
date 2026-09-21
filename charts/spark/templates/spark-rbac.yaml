@@ -1,0 +1,40 @@
+{{- $saName := "" }}
+{{- if eq (include "platform" .) "aws" }}
+  {{- $saName = "ems-platform-sparkserviceaccount" }}
+{{- else }}
+  {{- $saName = "sparkserviceaccount" }}
+{{- end }}
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $saName }}
+  namespace: ems-platform
+  {{- if eq (include "platform" .) "aws" }}
+  annotations:
+    eks.amazonaws.com/role-arn: "{{ .Values.secrets_store_csi_role_arn }}"
+  {{- end }}
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: sparkrole
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "watch", "list"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: sparkrolebinding
+subjects:
+  - kind: ServiceAccount
+    name: {{ $saName }}
+roleRef:
+  kind: Role
+  name: sparkrole
+  apiGroup: rbac.authorization.k8s.io

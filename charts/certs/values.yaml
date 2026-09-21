@@ -1,0 +1,74 @@
+platform: onprem
+brandName: "ems-platform"
+devMode: false
+emsuiSubdomain: "emsui"
+endpoint: "ems.example.local"
+cpeSupport:
+  enabled: false
+enbSupport:
+  enabled: false
+smallcellSupport:
+  enabled: false
+ConnectionUrls:
+  keycloak: http://keycloak/auth
+  pgDb:
+    host: postgresql-hl
+    port: 5432
+cronJobs:
+  LanDevices:
+    image: ghcr.io/vlad-radu-anca/k8s-landevices-job
+    tag: latest
+    lanDevicesExitTime: 36000
+  SyncPreferredLocation:
+    image: ghcr.io/vlad-radu-anca/k8s-syncpreferredloc-job
+    tag: latest
+    exitTime: 36000
+    keycloakClientSecret: ""
+  postgres:
+    backup_enabled: false
+    image: postgres
+    tag: "15.2"
+    local_path: "/opt/ems-platform/backup/postgres-snapshot"
+    recover_days: 5
+    node_name: master-1
+job:
+  pg_roles:
+    enabled: false
+    image: ghcr.io/vlad-radu-anca/ems-insert-roles
+    tag: latest
+    pullPolicy: Always
+  grafana:
+    image: ghcr.io/vlad-radu-anca/grafana-job
+    tag: latest
+    pullPolicy: Always
+  init_client:
+    image: ghcr.io/vlad-radu-anca/k8s-init-client-job
+    tag: latest
+    pullPolicy: Always
+smtp:
+  server: ""
+  port: 587
+  ssl: false
+  startTls: true
+  auth: false
+  authType: ""
+  senderEmail: ""
+  envelopFrom: ""
+  debug: false
+  scope: ""
+  tokenUrl: ""
+initContainers:
+  curlImage:
+    repo: curlimages/curl
+    tag: 8.12.1
+  busyboxImage:
+    repo: busybox
+    tag: 1.36.1
+  mongoImage:
+    repo: public.ecr.aws/bitnami/mongodb
+    tag: 8.0.12-debian-12-r0
+awsConfig:
+  aws_mode: false
+  namespace: "ems-platform"
+secrets:
+  internal_keycloak_core_api_client: "internal-keycloak-core-api-client"

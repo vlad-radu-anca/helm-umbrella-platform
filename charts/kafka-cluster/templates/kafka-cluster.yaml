@@ -1,0 +1,134 @@
+{{- if .Values.kafkaCluster.enabled }}
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: {{ .Values.kafkaCluster.clusterName }}
+  namespace: {{ .Values.kafkaCluster.namespace }}
+  annotations:
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
+spec:
+  kafka:
+    version: {{ .Values.kafkaCluster.kafkaVersion }}
+    replicas: {{ .Values.kafkaCluster.replicaCount }}
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+      {{- with .Values.kafkaCluster.externalAccess }}
+      {{- if .enabled }}
+      - name: external
+        port: {{ .port | default 9094 }}
+        tls: true
+        {{- with .auth }}
+        authentication:
+          type: {{ . }}
+        {{- end }}
+        type: loadbalancer
+        configuration:
+          bootstrap:
+            {{- with .san }}
+            alternativeNames:
+              {{- range $name := . }}
+              - {{ $name }}
+              {{- end }}
+            {{- end }}
+            annotations:
+              {{- if eq .type "metal" }}
+              metallb.universe.tf/allow-shared-ip: key-to-share-1.2.3.4
+              {{- else if eq .type "nlb" }}
+              service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+              service.beta.kubernetes.io/aws-load-balancer-scheme: {{- if .internet }} internet-facing {{- else }} internal {{- end }}
+              service.beta.kubernetes.io/aws-load-balancer-type: external
+              {{- end }}
+              {{- with $.Values.kafkaCluster.externalAccess.annotations }}
+              {{- toYaml . | nindent 14 }}
+              {{- end }}
+          brokers:
+          {{- $brokerCount := $.Values.kafkaCluster.replicaCount | int }}
+          {{- range until $brokerCount }}
+          - broker: {{ . }}
+            annotations:
+              {{- if eq $.Values.kafkaCluster.externalAccess.type "metal" }}
+              metallb.universe.tf/allow-shared-ip: key-to-share-1.2.3.4
+              {{- else if eq $.Values.kafkaCluster.externalAccess.type "nlb" }}
+              service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+              service.beta.kubernetes.io/aws-load-balancer-scheme: {{- if $.Values.kafkaCluster.externalAccess.internet }} internet-facing {{- else }} internal {{- end }}
+              service.beta.kubernetes.io/aws-load-balancer-type: external
+              {{- end }}
+              {{- with $.Values.kafkaCluster.externalAccess.annotations }}
+              {{- toYaml . | nindent 14 }}
+              {{- end }}
+          {{- end }}
+      {{- end }}
+      {{- end }}
+    config:
+      offsets.topic.replication.factor: {{ .Values.kafkaCluster.config.offsetsReplicationFactor }}
+      transaction.state.log.replication.factor: {{ .Values.kafkaCluster.config.transactionLogReplicationFactor }}
+      transaction.state.log.min.isr: {{ .Values.kafkaCluster.transaction.minIsr }}
+      default.replication.factor: {{ .Values.kafkaCluster.config.defaultReplicationFactor }}
+      min.insync.replicas: {{ .Values.kafkaCluster.config.minInsyncReplicas }}
+      inter.broker.protocol.version: {{ .Values.kafkaCluster.config.interBrokerProtocolVersion }}
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: {{ .Values.kafkaCluster.metrics.configMapName }}
+          key: {{ .Values.kafkaCluster.metrics.configMapKey }}
+    resources:
+      {{- toYaml .Values.kafkaCluster.resources | nindent 6 }}
+    template:
+      pod:
+        {{- with .Values.kafkaCluster.template.metadata }}
+        metadata:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.kafkaCluster.template.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.kafkaCluster.template.priorityClassName }}
+        priorityClassName: {{ .Values.kafkaCluster.template.priorityClassName }}
+        {{- end }}
+        terminationGracePeriodSeconds: {{ .Values.kafkaCluster.template.terminationGracePeriodSeconds }}
+        {{- with .Values.kafkaCluster.template.topologySpreadConstraints }}
+        topologySpreadConstraints:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.kafkaCluster.template.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.kafkaCluster.template.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{-  if or (eq .Values.kafkaTopic.installOperator true) (ne .Values.kafkaCluster.externalAccess.auth nil )}}
+  entityOperator:
+{{- if ne .Values.kafkaCluster.externalAccess.auth nil }}
+    userOperator:
+      logging:
+        loggers:
+          logger.jetty.level: WARN
+          rootLogger.level: INFO
+        type: inline
+      reconciliationIntervalMs: 60000
+      watchedNamespace: {{ .Values.kafkaCluster.namespace }}
+{{- end }}
+{{- if .Values.kafkaTopic.installOperator }}
+    topicOperator:
+      logging:
+        loggers:
+          logger.jetty.level: WARN
+          rootLogger.level: INFO
+        type: inline
+      reconciliationIntervalMs: 60000
+      watchedNamespace: {{ .Values.kafkaTopic.namespace }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,147 @@
+name: Publish Helm Chart to OCI
+
+on:
+  workflow_call:
+    inputs:
+      charts:
+        description: 'JSON array of chart names to process'
+        required: false
+        type: string
+        default: '[]'
+  workflow_dispatch:
+    inputs:
+      charts:
+        description: 'JSON array of chart directory names, or "all" to publish every chart under charts/ (versions already in GHCR are skipped)'
+        required: false
+        type: string
+        default: 'all'
+
+jobs:
+  publish-chart:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref }}  # This will be refs/heads/main in post-merge
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull latest changes including version bumps
+        run: |
+          # Make sure we have the very latest commits including the version bump
+          git pull origin "${{ github.ref_name }}"
+          echo "Latest commit:"
+          git log -1 --oneline
+          echo "Git status:"
+          git status
+
+      - name: Set up helm
+        uses: azure/setup-helm@v5.0.1
+        with:
+            version: 'v3.12.0'
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Set charts variable
+        id: set-charts
+        run: |
+          CHARTS='${{ inputs.charts }}'
+          echo "Raw input charts: $CHARTS"
+
+          # Manual run with "all": every chart directory except the umbrella
+          if [[ "$CHARTS" == "all" ]]; then
+            CHARTS=$(ls -d charts/*/ | xargs -n1 basename | grep -v '^ems-platform-stack$' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "Expanded 'all' to: $CHARTS"
+          fi
+
+          # Validate JSON format
+          if echo "$CHARTS" | jq . >/dev/null 2>&1; then
+            echo "charts=$CHARTS" >> $GITHUB_OUTPUT
+            echo "Valid JSON charts: $CHARTS"
+          else
+            echo "Invalid JSON, using empty array"
+            echo "charts=[]" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Check if any charts to publish
+        id: check-charts
+        run: |
+          CHARTS='${{ steps.set-charts.outputs.charts }}'
+          if [[ "$CHARTS" == "[]" || "$CHARTS" == "" || "$CHARTS" == "null" ]]; then
+            echo "has_charts=false" >> $GITHUB_OUTPUT
+            echo "No charts to publish"
+          else
+            echo "has_charts=true" >> $GITHUB_OUTPUT
+            echo "Charts to publish: $CHARTS"
+          fi
+
+      - name: Log in to GitHub Container Registry
+        if: steps.check-charts.outputs.has_charts == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Helm charts to OCI registry
+        if: steps.check-charts.outputs.has_charts == 'true'
+        run: |
+          CHARTS='${{ steps.set-charts.outputs.charts }}'
+    
+          # Fix: Add quotes if they're missing
+          if [[ "$CHARTS" =~ ^\[.*\]$ ]] && [[ ! "$CHARTS" =~ ^\[\".*\"\]$ ]]; then
+            CHARTS=$(echo "$CHARTS" | sed 's/\[/["/' | sed 's/\]/"]/' | sed 's/,/","/g')
+            echo "Fixed Charts JSON: $CHARTS"
+          fi
+
+          echo "Charts JSON: $CHARTS"
+       
+          while IFS= read -r CHART; do
+            [[ -z "$CHART" ]] && continue
+
+            # Skip umbrella chart (ems-platform-stack)
+            if [[ "$CHART" == "ems-platform-stack" ]]; then
+              echo "🚫 Skipping umbrella chart: $CHART"
+              continue
+            fi
+      
+            CHART_PATH="charts/$CHART"
+            
+            if [[ ! -f "$CHART_PATH/Chart.yaml" ]]; then
+              echo "Warning: Chart.yaml not found for $CHART at $CHART_PATH"
+              continue
+            fi
+            
+            CHART_NAME=$(yq e '.name' "$CHART_PATH/Chart.yaml")
+            CHART_VERSION=$(yq e '.version' "$CHART_PATH/Chart.yaml")
+
+            # Idempotent: skip versions already in the registry (manual backfill / re-runs)
+            if helm show chart "oci://ghcr.io/vlad-radu-anca/$CHART_NAME" --version "$CHART_VERSION" >/dev/null 2>&1; then
+              echo "⏭️  $CHART_NAME@$CHART_VERSION already in GHCR, skipping"
+              continue
+            fi
+
+            echo "Packaging $CHART_NAME@$CHART_VERSION"
+
+            helm dependency update "$CHART_PATH"
+            helm package "$CHART_PATH" --destination ./
+
+            echo "Pushing $CHART_NAME@$CHART_VERSION to GHCR"
+            helm push "${CHART_NAME}-${CHART_VERSION}.tgz" oci://ghcr.io/vlad-radu-anca
+          done < <(echo "$CHARTS" | jq -r '.[]')
+
+      - name: Summary
+        if: steps.check-charts.outputs.has_charts == 'false'
+        run: |
+          echo "ℹ️ No individual charts detected for publishing in this ${{ github.event_name }} event"
+          echo "📝 Note: Umbrella chart (ems-platform-stack) is excluded from this workflow"

@@ -1,0 +1,352 @@
+suite: test core-api hpa
+templates:
+  - core-api-hpa.yaml
+tests:
+  - it: should not render when hpa is disabled
+    set:
+      coreApi:
+        hpa:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render HPA when enabled
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HorizontalPodAutoscaler
+      - isAPIVersion:
+          of: autoscaling/v2
+
+  - it: should have correct metadata
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+    asserts:
+      - equal:
+          path: metadata.name
+          value: core-api
+
+  - it: should target correct StatefulSet
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+    asserts:
+      - equal:
+          path: spec.scaleTargetRef.apiVersion
+          value: apps/v1
+      - equal:
+          path: spec.scaleTargetRef.kind
+          value: StatefulSet
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: core-api
+
+  - it: should set replica limits correctly
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 2
+          maxReplicas: 10
+    asserts:
+      - equal:
+          path: spec.minReplicas
+          value: 2
+      - equal:
+          path: spec.maxReplicas
+          value: 10
+
+  - it: should include CPU metrics when averageCpuUtilization is set
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+          averageCpuUtilization: 70
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 70
+
+  - it: should include memory metrics when averageMemoryUtilization is set
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+          averageMemoryUtilization: 80
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                AverageUtilization: 80
+
+  - it: should include both CPU and memory metrics when both are set
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+          averageCpuUtilization: 70
+          averageMemoryUtilization: 80
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 70
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                AverageUtilization: 80
+
+  - it: should include default CPU metrics when no specific values are set
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+    asserts:
+      - exists:
+          path: spec.metrics
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 95
+
+  - it: should include only CPU metrics when memory is not specified
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+          averageCpuUtilization: 70
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 70
+      - notContains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+
+  - it: should include only memory metrics when CPU is not specified and memory is set
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+          averageMemoryUtilization: 80
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                AverageUtilization: 80
+
+  - it: should handle minimum CPU percentage (1%)
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+          averageCpuUtilization: 1
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 1
+
+  - it: should handle minimum memory percentage (1%)
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+          averageMemoryUtilization: 1
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                AverageUtilization: 1
+
+  - it: should handle high CPU percentage
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+          averageCpuUtilization: 95
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 95
+
+  - it: should handle high memory percentage
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 5
+          averageMemoryUtilization: 90
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                AverageUtilization: 90
+
+  - it: should handle minimum replica values
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 1
+          maxReplicas: 1
+    asserts:
+      - equal:
+          path: spec.minReplicas
+          value: 1
+      - equal:
+          path: spec.maxReplicas
+          value: 1
+
+  - it: should handle large replica values
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 10
+          maxReplicas: 100
+    asserts:
+      - equal:
+          path: spec.minReplicas
+          value: 10
+      - equal:
+          path: spec.maxReplicas
+          value: 100
+
+  - it: should work with realistic configuration
+    set:
+      coreApi:
+        hpa:
+          enabled: true
+          minReplicas: 2
+          maxReplicas: 8
+          averageCpuUtilization: 75
+          averageMemoryUtilization: 85
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: core-api
+      - equal:
+          path: spec.scaleTargetRef.kind
+          value: StatefulSet
+      - equal:
+          path: spec.minReplicas
+          value: 2
+      - equal:
+          path: spec.maxReplicas
+          value: 8
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 75
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                AverageUtilization: 85

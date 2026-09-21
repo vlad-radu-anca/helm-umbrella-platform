@@ -1,0 +1,45 @@
+{{- if .Values.cpeSupport.enabled }}
+---
+apiVersion: v1
+data:
+  MONGO_USER_APP_NAME: root-user
+  MONGO_USER_APP_PASSWORD: password
+  MONGO_USER_ROOT_NAME: root-user
+  MONGO_USER_ROOT_PASSWORD: password
+kind: ConfigMap
+metadata:
+  name: mongo-auth-env
+  labels:
+    {{- include "mongo.labels" . | nindent 4 }}
+---
+apiVersion: v1
+data:
+  MONGO_AUTH_SOURCE: admin
+  MONGO_BIND_IP: '"0.0.0.0"'
+  MONGO_DB_NAME: genieacs
+  MONGO_REPLICA_SET_MEMBERS: '[{_id: 0, host: "mongo:27017", priority: 1}]'
+  MONGO_REPLICA_SET_NAME: rs0
+  MONGO_REPLICAS: '"mongo:27017"'
+  MONGO_WIREDTIGER_CACHE_SIZE: "{{ .Values.mongo_wiredtiger_cache_size }}"
+
+kind: ConfigMap
+metadata:
+  name: mongo-config-env
+  labels:
+    {{- include "mongo.labels" . | nindent 4 }}
+---
+apiVersion: v1
+data:
+  MONGO_HOST: mongo
+  MONGO_PORT: "27017"
+  MONGO_URL: http://mongo:27017
+  WAITFORIT_HOST: mongo
+  WAITFORIT_PORT: "27017"
+  WAITFORIT_URL: http://mongo:27017
+kind: ConfigMap
+metadata:
+  name: mongo-host-env
+  labels:
+    {{- include "mongo.labels" . | nindent 4 }}
+---
+{{- end }}

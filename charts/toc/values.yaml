@@ -1,0 +1,124 @@
+endpoint: "ems.example.local"
+
+platform: onprem # or aws
+
+dev_mode: false
+
+toc:
+  loadBalancerIP: "ems-platform-device-access-n520w-vsvdsvdsvdsv.elb.us-east-1.amazonaws.com"
+  spc_support:
+    enabled: true
+    address: "confd-headless"
+  emsui_subdomain: "ui"
+  enabled: true
+  loadUsers: true
+  image: vlad-radu-anca/toc
+  tag: 5.0.latest
+  pullPolicy: Always
+  replicaCount: 1
+  imagePullSecrets: [name: "regcred"]
+  nameOverride: ""
+  fullnameOverride: ""
+  usageLimits:
+    warningThreshold: 75 # Warning at 75% usage
+    criticalThreshold: 90 # Critical at 90% usage
+    percentageToFree: 20 # Free 20% of files during cleanup
+    imageThresholdMB: 5120 # Default images threshold in 5120 MB (5GB)
+    logThresholdMB: 2048 #Default logs threshold in 2048 MB (2GB)
+  smtp:
+    senderEmail: "ems-smtp@example.com"
+    server: "smtp.example.com"
+    port: 587
+    ssl: true
+    startTls: false
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 7001
+  resources:
+    limits:
+      cpu: 800m
+      memory: 1500Mi
+    requests:
+      cpu: 500m
+      memory: 1000Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 90
+    targetMemoryUtilizationPercentage: 90
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-large
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/enable-cors: "false"
+    hosts:
+      - host: "toc.{{ Values.endpoint }}"
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+  ConnectionUrls:
+    coreApi: http://core-api:9000
+    elastic: http://elastic:9200
+    keycloak: 
+      aws: http://keycloak-headless.keycloak.svc.cluster.local:8080/auth
+      onprem: http://keycloak/auth
+    spark: http://spark:4041
+    mongo:
+      aws:
+        uri: mongodb+srv://cluster0.example.mongodb.net
+      onprem:
+        uri: mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0
+    pgDb:
+      dbname: ems-platform
+      host: postgresql-hl
+      port: 5432
+  dbs:
+    mongo:
+      name: tocdb
+  aws_config:
+    resource_prefix: "ems-platform"
+    resource_suffix: "xlv"
+    sftp_server_type: "none"
+    accountId: "123456789012"
+    kmsKey: "00000000-0000-0000-0000-000000000000"
+    awsCredentials:
+      region: "us-east-1"
+    hostedZoneId: "Z09121121V9JMYAWZ95GH"
+    sftp_subdomain: "sftp"
+    recordValue: "s-asvavvvavvav.server.transfer.us-east-1.amazonaws.com"
+  topicOperator:
+    kafkaBootstrapServers: "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  serviceAccountName: "secrets-store-csi-driver-terraform"
+  initContainers:
+    curlImage:
+      repo: curlimages/curl
+      tag: 8.12.1
+    mongoImage:
+      repo: public.ecr.aws/bitnami/mongodb
+      tag: 8.0.6-debian-12-r0
+  import_regions:
+    image: vlad-radu-anca/k8s-load-regions-job
+    tag: 5.0.latest
+    pullPolicy: Always
+  secrets:
+    external_ems_aoa_client: "ems-platform_external_ems_aoa_client_xlv"
+    internal_pg_client: "ems-platform_internal_pg_client_xlv"
+    internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
+    internal_keycloak_toc_client: "ems-platform_internal_keycloak_toc_client_xlv"
+  smallcell_support: # small cell 5g support
+    enabled: true
+  ems-platform_toc_access_role: "arn:aws:iam::123456789012:role/ems-platform_toc_access_role_y55li"
+
+securityContext:
+  fsGroup: 10000
+  runAsUser: 10000
+  runAsGroup: 10000

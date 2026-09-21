@@ -1,0 +1,22 @@
+{{- if .Values.cpeSupport.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    autoheal: "true"
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  name: genieacsfs
+  labels:
+    {{- include "genieacsfs.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  loadBalancerIP: {{ .Values.loadBalancerIP }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 7567
+      protocol: TCP
+      name: fs
+  selector:
+    {{- include "genieacsfs.selectorLabels" . | nindent 4 }}
+{{- end }}

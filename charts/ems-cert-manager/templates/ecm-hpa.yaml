@@ -1,0 +1,37 @@
+{{- if .Values.smallcell_support.enabled }}
+{{- if .Values.emscertmanager.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "emscertmanager.fullname" . }}
+  labels:
+    app: {{ template "emscertmanager.name" . }}
+    chart: {{ template "emscertmanager.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ems-certs-mgmt
+  minReplicas: {{ .Values.emscertmanager.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.emscertmanager.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.emscertmanager.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.emscertmanager.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.emscertmanager.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.emscertmanager.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+{{- end }}

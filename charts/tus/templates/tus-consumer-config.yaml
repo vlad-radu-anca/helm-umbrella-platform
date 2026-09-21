@@ -1,0 +1,45 @@
+{{- if .Values.tus.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tus-consumer-application-config
+  labels:
+    {{- include "tus.labels" . | nindent 4 }}
+    app: tus-consumer
+data:
+  application.yaml: |
+    app:
+      name: "tus-consumer"
+      devMode: {{ .Values.dev_mode | default true }}
+
+    server:
+      port: "8081"
+
+    kafka:
+      kafkaBootstrapServers:
+        - "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+      connectionTimeout: 10000
+      topic: "ems-platform-tus-file-uploaded"
+      groupId: "tus-consumer-group"
+      notificationTopic: "ems-platform-tus-file-uploaded-notification"
+      
+    toc:
+      baseUrl: "http://toc-headless.ems-platform.svc.cluster.local:7001"
+      timeout: "30s"
+
+    fileStorage:
+      basePath: "/var/lib/tusd-data"
+      cleanupIntervalMinutes: 5
+      maxAgeMinutes: 60
+
+    logger:
+      logLevel: "INFO"
+      callerLevel: "INFO"
+      stackTraceLevel: "ERROR"
+      charLimit: 1024
+      formatJson: true
+
+    fiber:
+      bodyLimit: 200 # in MB
+{{- end }}

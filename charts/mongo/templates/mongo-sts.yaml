@@ -1,0 +1,86 @@
+{{- if .Values.cpeSupport.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  labels:
+    {{- include "mongo.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "mongo.selectorLabels" . | nindent 6 }}
+  serviceName: mongo-headless
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "mongo.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      priorityClassName: ems-platform-high-priority
+      containers:
+        - name: mongo
+          image: "{{ .Values.image }}:{{ .Values.tag }}"
+          ports:
+            - containerPort: 27017
+              name: http
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          volumeMounts:
+            - name: mongo-persistent-storage
+              mountPath: /data/db
+          envFrom:
+            - configMapRef:
+                name: mongo-auth-env
+            - configMapRef:
+                name: mongo-config-env
+            - configMapRef:
+                name: mongo-host-env
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      hostAliases:
+      - ip: "0.0.0.0"
+        hostnames:
+        - "mongo"
+      volumes:
+        - name: mongo-config-env
+          configMap:
+            name: mongo-config-env
+            defaultMode: 0777
+        - name: mongo-auth-env
+          configMap:
+            name: mongo-auth-env
+            defaultMode: 0777
+        - name: mongo-host-env
+          configMap:
+            name: mongo-host-env
+            defaultMode: 0777  
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-persistent-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.persistent_size }}
+{{- end }}

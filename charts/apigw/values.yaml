@@ -1,0 +1,84 @@
+platform: onprem
+
+apigw:
+  dbs:
+    mongo:
+      name: tocdb
+  initContainers:
+    curlImage:
+      repo: "curlimages/curl"
+      tag: "8.12.1"
+    mongoImage:
+      repo: public.ecr.aws/bitnami/mongodb
+      tag: 8.0.6-debian-12-r0
+  smallcell_support:
+    enable: true
+  image: vlad-radu-anca/apigw
+  tag: 5.0.latest
+  pullPolicy: Always
+  replicaCount: 1
+  imagePullSecrets: [name: "regcred"]
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 7702
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1000Mi
+    requests:
+      cpu: 250m
+      memory: 500Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 90
+    targetMemoryUtilizationPercentage: 90
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-large
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/enable-cors: "false"
+    hosts:
+      - host: apigw.ems.example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+  ConnectionUrls:
+    coreApi: http://core-api:9000
+    elastic: http://elastic:9200
+    keycloak:
+      aws: http://keycloak-headless.keycloak.svc.cluster.local:8080/auth
+      onprem: http://keycloak/auth
+    spark: http://spark:4041
+    mongo:
+      aws:
+        uri: mongodb+srv://cluster0.example.mongodb.net
+      onprem:
+        uri: mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0
+    pgDb:
+      dbname: ems-platform
+      host: postgresql-hl
+      port: 5432
+  secrets:
+    mongo_emsdb_client: "mongoatlas-emsdb-secrets"
+    internal_elastic_client: "internal_elastic_client"
+    aws:
+      internal_elastic_client: "internal_elastic_client"
+
+endpoint: ems.example.local
+
+securityContext:
+  fsGroup: 10000
+  runAsUser: 10000
+  runAsGroup: 10000

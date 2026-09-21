@@ -1,0 +1,243 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark
+  labels:
+    app: emsakka-local
+    {{- include "spark.labels" . | nindent 4 }}
+spec:
+  replicas: {{ if .Values.spark.clusteringEnabled }}{{ .Values.spark.replicaCountClustering }}{{ else }}{{ .Values.spark.replicaCountNonClustering }}{{ end }}
+  selector:
+    matchLabels:
+      lbtype: external
+      app: emsakka-local
+      {{- include "spark.selectorLabels" . | nindent 6 }}
+  {{- if eq (include "platform" .) "aws" }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  {{- end }}
+  template:
+    metadata:
+      {{- with .Values.spark.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        lbtype: external
+        app: emsakka-local
+        {{- include "spark.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ if eq (include "platform" .) "aws" }}ems-platform-sparkserviceaccount{{ else }}sparkserviceaccount{{ end }}
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+
+      {{- with .Values.spark.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- $platform := include "platform" . }}
+      {{- with index .Values.spark.nodeSelector $platform }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.spark.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.spark.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.spark.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      initContainers:
+        - name: wait-for-dependency
+          image: {{ .Values.spark.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.spark.initContainers.curlImage.tag | default "8.12.1" }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - >
+              while [[ $(curl -sw '%{http_code}' http://core-api:9000/diesel/rest/v1/ems/local/started -o /dev/null) -ne 200 ]]; do
+                sleep 5;
+                echo 'Waiting for core-api to be ready...';
+              done;
+              echo 'core-api is ready'
+
+      priorityClassName: ems-platform-high-priority
+
+      containers:
+        - name: spark
+          image: "{{ .Values.spark.image }}:{{ .Values.spark.tag }}"
+          imagePullPolicy: {{ .Values.spark.pullPolicy }}
+          args:
+            - /bin/sh
+            - -c
+            - /bin/bash -c "/opt/spark/bin/run.sh"
+          envFrom:
+            - configMapRef:
+                name: spark-config-env
+          env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: AKKA_CLUSTER_BOOTSTRAP_SERVICE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: "metadata.labels['app']"
+            - name: SPARK_EMS_SERIALNUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: ems-serialnumber
+                  key: EMS_SERIALNUMBER
+            - name: SPARK_SPC_SERIALNUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: spc-serialnumber
+                  key: SPC_SERIALNUMBER
+
+          startupProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
+            httpGet:
+              path: /status
+              port: 4041
+
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: 4041
+            failureThreshold: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 4041
+            failureThreshold: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+
+          resources:
+            {{- toYaml .Values.spark.resources | nindent 12 }}
+
+          ports:
+            - containerPort: 4040
+              name: spark
+            - containerPort: 4041
+              name: spark-1
+            - containerPort: 25520
+              name: spark-2
+            - containerPort: 9095
+              name: spark-kamon
+            - containerPort: 4335
+              name: spark-callhome
+            - containerPort: 4336
+              name: spc-callhome
+            - containerPort: 8443
+              name: spark-https
+            - containerPort: 4043
+              name: spark-websocket
+
+          volumeMounts:
+            - mountPath: /usr/local/spark/logconf
+              name: spark-log-config
+            - mountPath: /opt/spark/logconf
+              name: spark-log-config
+            - mountPath: /var/ems-config/ems-config.json
+              name: ems-config
+              subPath: ems-config.json
+            - name: elastic-client-secrets
+              mountPath: "/opt/ems-platform/config/elastic"
+              readOnly: true
+            {{- with .Values.spark.secret }}
+            {{- if .identity }}
+            - mountPath: /opt/ems-platform/config/ems/tls/identity
+              name: spark-identity-secret
+              readOnly: true
+            {{- end }}
+            {{- if .trust }}
+            - mountPath: /opt/ems-platform/config/ems/tls/trust
+              name: spark-trust-secret
+              readOnly: true
+            {{- end }}
+            {{- end }}
+
+      restartPolicy: Always
+
+      volumes:
+        - name: spark-log-config
+          configMap:
+            name: spark-log-config
+            defaultMode: 0644
+        - name: ems-config
+          configMap:
+            name: ems-config
+            defaultMode: 0644
+        {{- if eq (include "platform" .) "aws" }}
+        - name: elastic-client-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.spark.secrets.internal_elastic_client | replace "_" "-" }}"
+        {{- else }}
+        - name: elastic-client-secrets
+          secret:
+            secretName: internal-elastic-admin-client
+        {{- end }}
+        {{- with .Values.spark.secret }}
+        {{- if .identity }}
+        {{- if eq (include "platform" .) "aws" }}
+        - name: spark-identity-secret
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .identity }}"
+        {{- else }}
+        - name: spark-identity-secret
+          secret:
+            secretName: {{ .identity }}
+            defaultMode: 420
+            optional: false
+        {{- end }}
+        {{- end }}
+        {{- if .trust }}
+        {{- if eq (include "platform" .) "aws" }}
+        - name: spark-trust-secret
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .trust }}"
+        {{- else }}
+        - name: spark-trust-secret
+          secret:
+            secretName: {{ .trust }}
+            defaultMode: 420
+            optional: false
+        {{- end }}
+        {{- end }}
+        {{- end }}

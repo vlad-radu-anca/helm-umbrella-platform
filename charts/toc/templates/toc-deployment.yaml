@@ -1,0 +1,208 @@
+{{- if .Values.toc.smallcell_support.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: toc
+  labels:
+    {{- include "toc.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.toc.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "toc.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "toc.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      {{- with .Values.toc.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      priorityClassName: ems-platform-high-priority
+      {{- if eq (include "platform" .) "onprem" }}
+      serviceAccountName: toc-sa
+      {{- else if eq (include "platform" .) "aws" }}
+      serviceAccountName: ems-platform-toc-sa
+      {{- end }}
+      initContainers:
+      - name: wait-for-dependency
+        image: {{ .Values.toc.initContainers.mongoImage.repo | default "public.ecr.aws/bitnami/mongodb" }}:{{ .Values.toc.initContainers.mongoImage.tag | default "8.0.6-debian-12-r0" }}
+        env:
+          - name: MONGO_USERNAME
+            valueFrom:
+              secretKeyRef:
+                {{- if eq (include "platform" .) "onprem" }}
+                name: external-mongo-emsdb-secret
+                {{- else if eq (include "platform" .) "aws" }}
+                name: mongo-emsdb-client
+                {{- end }}
+                key: mongo-username
+          - name: MONGO_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                {{- if eq (include "platform" .) "onprem" }}
+                name: external-mongo-emsdb-secret
+                {{- else if eq (include "platform" .) "aws" }}
+                name: mongo-emsdb-client
+                {{- end }}
+                key: mongo-password
+        command:
+          - bash
+          - -c
+          - >
+            {{- if eq (include "platform" .) "aws" }}
+            until mongosh "{{ .Values.toc.ConnectionUrls.mongo.aws.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)";
+            {{- else if eq (include "platform" .) "onprem" }}
+            until mongosh "{{ .Values.toc.ConnectionUrls.mongo.onprem.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)";
+            {{- end }}
+            do echo "Waiting for MongoDB to be available"; sleep 2; done;
+
+      - name: wait-for-keycloak
+        image: {{ .Values.toc.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.toc.initContainers.curlImage.tag | default "8.12.1" }}
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - >
+            {{- if eq (include "platform" .) "aws" }}
+            KEYCLOAK_URL={{ .Values.toc.ConnectionUrls.keycloak.aws }};
+            {{- else if eq (include "platform" .) "onprem" }}
+            KEYCLOAK_URL={{ .Values.toc.ConnectionUrls.keycloak.onprem }};
+            {{- end }}
+            while [[ $(curl -sw '%{http_code}' ${KEYCLOAK_URL}/realms/DefaultTenant -o /dev/null) -ne 200 ]]; do
+              echo 'Waiting for the keycloak to be ready...';
+              sleep 30;
+            done;
+            echo 'Connection with keycloak established';
+
+      containers:
+        - image: "{{ .Values.toc.image }}:{{ .Values.toc.tag }}"
+          imagePullPolicy: {{ .Values.toc.pullPolicy }}
+          ports:
+            - containerPort: 7001
+              name: http
+          {{- if .Values.dev_mode }}
+            - containerPort: 40000
+              name: debug
+          {{- end }}
+          name: toc
+          resources:
+            {{- toYaml .Values.toc.resources | nindent 12 }}
+          volumeMounts:
+            - name: toc-application-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+            {{- if eq (include "platform" .) "onprem" }}
+            - name: kube-config-mount
+              mountPath: ~/.kube/config
+            {{- end }}
+            - name: toc-device-models-config
+              mountPath: /app/config/base-device-model-features.yaml
+              subPath: base-device-model-features.yaml
+            - name: toc-rebranded-device-models-config
+              mountPath: /app/config/rebranded-device-model-mapping.yaml
+              subPath: rebranded-device-model-mapping.yaml
+            {{- if eq (include "platform" .) "onprem" }}
+            - name: mongo-emsdb-secrets
+              mountPath: "/opt/ems-platform/config/mongo"
+              readOnly: true
+            {{- else if eq (include "platform" .) "aws" }}
+            - name: mongoatlas-emsdb-secrets
+              mountPath: "/opt/ems-platform/config/mongo"
+              readOnly: true
+            {{- end }}
+            - name: pg-perms-ems-platform-secrets
+              mountPath: "/opt/ems-platform/config/postgres"
+              readOnly: true
+            - name: keycloak-toc-secrets
+              mountPath: "/opt/ems-platform/config/keycloak"
+              readOnly: true
+            - name: elastic-client-secrets
+              mountPath: "/opt/ems-platform/config/elastic"
+              readOnly: true
+      restartPolicy: Always
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.toc.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.toc.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.toc.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.toc.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.toc.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: toc-application-config
+          configMap:
+            name: toc-application-config
+        {{- if eq (include "platform" .) "onprem" }}
+        - name: kube-config-mount
+          hostPath:
+            path: /opt/ems-platform/kubernetes
+        {{- end }}
+        - name: toc-device-models-config
+          configMap:
+            name: toc-device-models-config
+        - name: toc-rebranded-device-models-config
+          configMap:
+            name: toc-rebranded-device-models-config
+        {{- if eq (include "platform" .) "onprem" }}
+        - name: pg-perms-ems-platform-secrets
+          secret:
+            secretName: internal-pg-client
+        - name: mongo-emsdb-secrets
+          secret:
+            secretName: external-mongo-emsdb-secret
+        - name: elastic-client-secrets
+          secret:
+            secretName: internal-elastic-admin-client
+        - name: keycloak-toc-secrets
+          secret:
+            secretName: internal-keycloak-toc-client
+        {{- else if eq (include "platform" .) "aws" }}
+        - name: mongoatlas-emsdb-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: mongoatlas-emsdb-secrets
+        - name: pg-perms-ems-platform-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.toc.secrets.internal_pg_client | replace "_" "-" }}"
+        - name: elastic-client-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.toc.secrets.internal_elastic_client | replace "_" "-" }}"
+        - name: keycloak-toc-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.toc.secrets.internal_keycloak_toc_client | replace "_" "-" }}"
+        {{- end }}
+{{- end }}

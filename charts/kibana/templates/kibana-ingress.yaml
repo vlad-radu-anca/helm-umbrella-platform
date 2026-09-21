@@ -1,0 +1,59 @@
+{{- if .Values.kibana.ingress.enabled -}}
+{{- $fullName := .Values.elasticsearchFullname | default "elasticsearch" -}}
+{{- $svcPort := .Values.kibana.service.port -}}
+{{- $endpoint := .Values.kibana.endpoint -}}
+{{- if and .Values.kibana.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.kibana.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.kibana.ingress.annotations "kubernetes.io/ingress.class" .Values.kibana.ingress.className}}
+  {{- end }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: kibana-ingress
+  labels:
+  {{- with .Values.kibana.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.kibana.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.kibana.ingress.className }}
+  {{- end }}
+  {{- if .Values.kibana.ingress.tls }}
+  tls:
+    {{- range .Values.kibana.ingress.tls }}
+    - hosts:
+        - kibana.{{ $endpoint }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.kibana.ingress.hosts }}
+    - host: kibana.{{ $endpoint }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: kibana
+                port:
+                  number: {{ $svcPort }}
+              {{- else }}
+              serviceName: kibana
+              servicePort: {{ $svcPort }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

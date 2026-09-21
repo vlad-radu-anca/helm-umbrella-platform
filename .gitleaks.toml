@@ -1,0 +1,15 @@
+title = "helm-umbrella-platform gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Helm unittest fixtures and documented placeholder values"
+paths = [
+  '''charts/[^/]+/tests/.*_test\.yaml$''',
+]
+regexes = [
+  '''changeme''',
+  '''00000000-0000-0000-0000-000000000000''',
+  '''123456789012''',
+]

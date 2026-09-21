@@ -1,0 +1,26 @@
+{{- if .Values.emshelpcenter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: ems-help-center
+  labels:
+    app.kubernetes.io/name: ems-help-center
+  {{- if and (eq .Values.platform "onprem") .Values.emshelpcenter.dev_mode }}
+  annotations:
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  {{- end }}
+spec:
+  selector:
+    app.kubernetes.io/name: ems-help-center
+  ports:
+    - name: http
+      port: {{ .Values.emshelpcenter.service.port }}
+      targetPort: 9094
+    - name: internal
+      port: 3002
+      targetPort: 3002
+  type: {{ ternary "LoadBalancer" "ClusterIP" .Values.emshelpcenter.dev_mode }}
+  {{- if and (eq .Values.platform "onprem") .Values.emshelpcenter.dev_mode }}
+  loadBalancerIP: {{ .Values.emshelpcenter.loadBalancerIP }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,28 @@
+platform: onprem
+cpeSupport:
+  enabled: true
+loadBalancerIP: "0.0.0.0"
+image: ghcr.io/vlad-radu-anca/genieacs-fs
+tag: latest
+pullPolicy: Always
+replicaCount: 1
+imagePullSecrets: []
+podAnnotations: {}
+tolerations: []
+resources: {}
+nodeSelector:
+  onprem: {}
+  aws: {}
+affinity: {}
+service:
+  type: ClusterIP
+  port: 7567
+initContainers:
+  busyboxImage:
+    repo: busybox
+    tag: 1.36.1
+
+securityContext:
+  fsGroup: 2000
+  runAsUser: 2500
+  runAsGroup: 2500

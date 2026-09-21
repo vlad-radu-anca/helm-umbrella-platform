@@ -1,0 +1,161 @@
+# {{- printf "Effective platform: %s" (include "platform" .) }}
+{{- if .Values.apigw.smallcell_support.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apigw
+  labels:
+    {{- include "apigw.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.apigw.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "apigw.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apigw.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      {{- with .Values.apigw.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      priorityClassName: ems-platform-high-priority
+      initContainers:
+        - name: wait-for-mongo
+          image: {{ .Values.apigw.initContainers.mongoImage.repo | default "public.ecr.aws/bitnami/mongodb" }}:{{ .Values.apigw.initContainers.mongoImage.tag | default "8.0.6-debian-12-r0" }}
+          env:
+            - name: MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: external-mongo-emsdb-secret
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: mongo-emsdb-client
+                  {{- end }}
+                  key: mongo-username
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: external-mongo-emsdb-secret
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: mongo-emsdb-client
+                  {{- end }}
+                  key: mongo-password
+          command:
+            - bash
+            - -c
+            - >
+              {{- if eq (include "platform" .) "aws" }}
+              until mongosh "{{ .Values.apigw.ConnectionUrls.mongo.aws.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)";
+              {{- else if eq (include "platform" .) "onprem" }}
+              until mongosh "{{ .Values.apigw.ConnectionUrls.mongo.onprem.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)";
+              {{- end }}
+              do echo "Waiting for MongoDB to be available"; sleep 2; done;
+
+        - name: wait-for-elastic
+          image: {{ .Values.apigw.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.apigw.initContainers.curlImage.tag | default "8.12.1" }}
+          command: [ "/bin/sh", "-c" ]
+          env:
+          - name: ELK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                {{- if eq (include "platform" .) "onprem" }}
+                name: internal-elastic-admin-client
+                {{- else if eq (include "platform" .) "aws" }}
+                name: elastic-admin-client
+                {{- end }}
+                key: elk-username
+          - name: ELK_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                {{- if eq (include "platform" .) "onprem" }}
+                name: internal-elastic-admin-client
+                {{- else if eq (include "platform" .) "aws" }}
+                name: elastic-admin-client
+                {{- end }}
+                key: elk-password
+          args:
+            - "while [[ $(curl -sw '%{http_code}' -u \"$ELK_USERNAME:$ELK_PASSWORD\" {{ .Values.apigw.ConnectionUrls.elastic }} -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the Elastic to be ready...'; done; echo 'Connection with Elastic established'"
+      containers:
+        - image: "{{ .Values.apigw.image }}:{{ .Values.apigw.tag }}"
+          imagePullPolicy: {{ .Values.apigw.pullPolicy }}
+          ports:
+            - containerPort: 7702
+              name: http
+          name: apigw
+          resources:
+            {{- toYaml .Values.apigw.resources | nindent 12 }}
+          volumeMounts:
+            - name: apigw-application-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+          {{- if or (eq (include "platform" .) "onprem") (eq (include "platform" .) "aws") }}
+            - name: elastic-client-secrets
+              mountPath: "/opt/ems-platform/config/elastic"
+              readOnly: true
+            - name: mongo-emsdb-secrets
+              mountPath: "/opt/ems-platform/config/mongo"
+              readOnly: true
+          {{- end }}
+      restartPolicy: Always
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.apigw.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.apigw.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.apigw.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.apigw.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.apigw.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: apigw-application-config
+          configMap:
+            name: apigw-application-config
+        {{- if eq (include "platform" .) "onprem" }}
+        - name: elastic-client-secrets
+          secret:
+            secretName: internal-elastic-admin-client
+        - name: mongo-emsdb-secrets
+          secret:
+            secretName: external-mongo-emsdb-secret
+        {{- else if eq (include "platform" .) "aws" }}  
+        - name: mongo-emsdb-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.apigw.secrets.mongo_emsdb_client | default "mongoatlas-emsdb-secrets" | replace "_" "-" }}"
+        - name: elastic-client-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.apigw.secrets.internal_elastic_client | default "internal_elastic_client" | replace "_" "-" }}"
+        {{- end }}
+{{- end }}
+# DEBUG: Platform resolved as: {{ include "platform" . }}
+# DEBUG: Global exists: {{ if .Values.global }}YES{{ else }}NO{{ end }}
+# DEBUG: Global platform: {{ if .Values.global }}{{ .Values.global.platform | default "UNSET" }}{{ else }}NO_GLOBAL{{ end }}

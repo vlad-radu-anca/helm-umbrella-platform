@@ -1,0 +1,51 @@
+platform: onprem
+endpoint: "ems.example.local"
+cpeSupport:
+  enabled: true
+image: ghcr.io/vlad-radu-anca/genieacs-gui
+tag: latest
+pullPolicy: Always
+replicaCount: 1
+imagePullSecrets: []
+podAnnotations: {}
+tolerations: []
+resources: {}
+nodeSelector:
+  onprem: {}
+  aws: {}
+affinity: {}
+service:
+  type: ClusterIP
+  port: 3000
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts: []
+  tls: []
+initContainers:
+  busyboxImage:
+    repo: busybox
+    tag: 1.36.1
+
+certificate:
+  isCA: true
+  duration: 8760h
+  renewBefore: 168h
+  subject:
+    organizations:
+      - ems-platform
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: selfsigned-cluster-issuer
+  commonName: my-selfsigned-ca
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+
+securityContext:
+  fsGroup: 2000
+  runAsUser: 2500
+  runAsGroup: 2500

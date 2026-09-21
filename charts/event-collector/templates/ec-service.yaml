@@ -1,0 +1,19 @@
+{{- if .Values.eventcollector.service }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    autoheal: "true"
+  labels:
+    {{- include "eventcollector.labels" . | nindent 4 }}
+  name: {{ template "eventcollector.fullname" . }}
+spec:
+  type: {{ .Values.eventcollector.service.type }}
+  ports:
+    - name: "http"
+      port: {{ .Values.eventcollector.service.port }}
+      targetPort: 8080
+  selector:
+    {{- include "eventcollector.selectorLabels" . | nindent 4 }}
+{{- end }}

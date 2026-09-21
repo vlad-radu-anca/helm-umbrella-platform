@@ -1,0 +1,221 @@
+# Global shared config for all upgrade deployments
+platform: aws # or onprem
+serviceAccountName: "secrets-store-csi-driver-terraform"
+aws:
+  accessKey: "your-access-key"
+  secretAccessKey: "your-secret-access-key"
+  clusters:
+    blue:
+      eksCluster: "ems-platform-blue-t2"
+      region: us-east-1
+      prefix: "blue-"
+      suffix: "-blue"
+    green:
+      eksCluster: "ems-platform-green-t2"
+      region: us-east-1
+      prefix: "green-"
+      suffix: "-green"
+
+temporalClient:
+  hostPort: "temporal-frontend.temporal:7233"
+  namespace: "default"
+  taskQueue: "kafka-upgrade-queue"
+
+loggerElasticClient:
+  addresses: "http://elastic:9200"
+  connectionTimeout: 30
+  idxName: "upgrade-logs"
+
+kafkaClient:
+  bootstrapServers: "kafka-bootstrap"
+  port: 9092
+  mm2:
+    sourceCluster:
+      AuthSecret: "ems-platform-kafka-blue-external-user"
+      BootstrapServers: "kafka-bootstrap"
+      security:
+        protocol: "TLS"
+  secrets:
+    kafkaCACert: "ems-platform-kafka-blue-ca-cert"
+    kafkaClusterExternalUser: "ems-platform-kafka-cluster-external-user"
+
+elasticClient:
+  source:
+    host: http://elastic-source
+    port: 9200
+  target:
+    host: http://elastic-target
+    port: 9200
+
+
+mongoClient:
+  toc:
+    source:
+      host: mongodb://mongo-source
+      port: 27017
+      dbName: toc_source_db
+    target:
+      host: mongodb://mongo-target
+      port: 27017
+      dbName: toc_target_db
+  spc:
+    source:
+      host: mongodb://mongo-source
+      port: 27017
+      dbName: spc_source_db
+    target:
+      host: mongodb://mongo-target
+      port: 27017
+      dbName: spc_target_db
+  spckpi:
+    source:
+      host: mongodb://mongo-source
+      port: 27017
+      dbName: spckpi_source_db
+    target:
+      host: mongodb://mongo-target
+      port: 27017
+      dbName: spckpi_target_db
+
+psqlClient:
+  grafana:
+    source:
+      dbName: grafana_source_db
+      host: grafana-source
+      port: 5432
+    target:
+      dbName: grafana_target_db
+      host: grafana-target
+      port: 5432
+  keycloak:
+    source:
+      dbName: keycloak_source_db
+      host: keycloak-source
+      port: 5432
+    target:
+      dbName: keycloak_target_db
+      host: keycloak-target
+      port: 5432
+
+
+
+# Application level flags
+app:
+  devMode: false
+
+
+imageDefaults:
+  pullPolicy: IfNotPresent
+  imagePullSecrets: [name: "regcred"]
+
+k8sKafkaUpgrade:
+  enabled: true
+  image: vlad-radu-anca/k8s-kafka-upgrade-job
+  tag: 5.0.latest
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 300Mi
+    requests:
+      cpu: 200m
+      memory: 100Mi
+
+upgradeTransformsMongo:
+  enabled: true
+  image: vlad-radu-anca/upgrade-transforms-mongo
+  tag: latest
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 300Mi
+    requests:
+      cpu: 200m
+      memory: 100Mi
+
+upgradeTransformsPg:
+  enabled: true
+  image: vlad-radu-anca/upgrade-transforms-pg
+  tag: latest
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 300Mi
+    requests:
+      cpu: 200m
+      memory: 100Mi
+
+upgradeTransformsElastic:
+  enabled: true
+  image: vlad-radu-anca/upgrade-transforms-elastic
+  tag: latest
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 300Mi
+    requests:
+      cpu: 200m
+      memory: 100Mi
+
+secrets:
+  # Secret / SecretProviderClass names. For AWS elastic secret use 'elastic-admin-client' with keys elk-username / elk-password
+  elastic: elastic-admin-client
+  mongo: external-mongo-emsdb-secret
+  pg: internal-pg-client
+  temporal: ""
+
+mounts:
+  elastic: true
+  mongo: true   # only used by upgradeTransformsMongo
+  pg: true    # only used by upgradeTransformsPg
+
+# Keys within each secret to map to env vars
+envFromSecrets:
+  elastic:
+    usernameKey: elk-username
+    passwordKey: elk-password
+  mongo:
+    usernameKey: mongo-username
+    passwordKey: mongo-password
+  pg:
+    grafana:
+      usernameKey: pg-grafana-client-username
+      passwordKey: pg-grafana-client-password
+    emsPlatform:
+      usernameKey: pg-ems-platform-perms-client-username
+      passwordKey: pg-ems-platform-perms-client-password
+
+nodeSelector: {}
+affinity: {}
+tolerations: []
+
+helmReleases:
+  blue:
+    emsPlatformReleaseName: "ems-platform"
+    emsPlatformChartName: "ems-platform-aws-5.0.0"
+    emsPlatformChartRepo: "EMS"
+    kafkaReleaseName: "ems-platform-kafka-cluster"
+    kafkaChartName: "kafka-helm-5.1.6"
+    kafkaChartRepo: "EMS"
+    mm2ReleaseName: "mm2-blue-to-green"
+    mm2ChartName: "kafka-mirror-helm"
+    mm2ChartRepo: "EMS"
+    ngfDevicesReleaseName: "ngf-devices"
+    ngfDevicesChartName: "nginx-gateway-fabric-1.6.2"
+    ngfDevicesChartRepo: "oci://ghcr.io/nginxinc/charts"
+  green:
+    emsPlatformReleaseName: "ems-platform"
+    emsPlatformChartName: "ems-platform-aws-5.0.0"
+    emsPlatformChartRepo: "EMS"
+    kafkaReleaseName: "ems-platform-kafka-cluster"
+    kafkaChartName: "kafka-helm-5.1.6"
+    kafkaChartRepo: "EMS"
+    mm2ReleaseName: "mm2-blue-to-green"
+    mm2ChartName: "kafka-mirror-helm"
+    mm2ChartRepo: "EMS"
+    ngfDevicesReleaseName: "ngf-devices"
+    ngfDevicesChartName: "nginx-gateway-fabric-1.6.2"
+    ngfDevicesChartRepo: "oci://ghcr.io/nginxinc/charts"

@@ -1,0 +1,72 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    autoheal: "true"
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  name: core-api
+  labels:
+    {{- include "coreApi.labels" . | nindent 4 }}
+spec:
+  type: {{ ternary "LoadBalancer" "ClusterIP" .Values.dev_mode }}
+  {{- if .Values.dev_mode }}
+  loadBalancerIP: {{ .Values.loadBalancerIP }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.coreApi.service.port }}
+      targetPort: 9000
+      protocol: TCP
+      name: http
+    - port: {{ .Values.coreApi.service.akka_cluster_port }}
+      targetPort: 9002
+      protocol: TCP
+      name: akka-cluster
+    - port: {{ .Values.coreApi.service.akka_management_port }}
+      targetPort: 8558
+      protocol: TCP
+      name: akka-management
+  sessionAffinity: ClientIP
+  selector:
+    {{- include "coreApi.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-api-headless
+  labels:
+    {{- include "coreApi.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: {{ .Values.coreApi.service.port }}
+      targetPort: 9000
+      protocol: TCP
+      name: http
+    - port: {{ .Values.coreApi.service.akka_cluster_port }}
+      targetPort: 9002
+      protocol: TCP
+      name: akka-cluster
+    - port: {{ .Values.coreApi.service.akka_management_port }}
+      targetPort: 8558
+      protocol: TCP
+      name: akka-management
+  selector:
+    {{- include "coreApi.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-api-metrics
+  labels:
+    {{- include "coreApi.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.coreApi.service.port }}
+      targetPort: 9000
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "coreApi.selectorLabels" . | nindent 4 }}

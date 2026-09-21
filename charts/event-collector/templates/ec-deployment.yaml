@@ -1,0 +1,158 @@
+{{- if .Values.eventcollector.kafkaCluster.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "eventcollector.fullname" . }}
+  labels:
+    {{- include "eventcollector.labels" . | nindent 4 }}
+spec:
+  replicas: {{ if .Values.eventcollector.clusteringEnabled }}{{ .Values.eventcollector.replicaCountClustering }}{{ else }}{{ .Values.eventcollector.replicaCountNonClustering }}{{ end }}
+  selector:
+    matchLabels:
+      {{- include "eventcollector.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/q/metrics"
+        prometheus.io/port: "8081"
+      {{- with .Values.eventcollector.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "eventcollector.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ template "eventcollector.serviceAccountName" . }}
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.eventcollector.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.eventcollector.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.eventcollector.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.eventcollector.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.eventcollector.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.eventcollector.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.eventcollector.init.enabled }}
+      initContainers:
+        - name: wait-for-dependency
+          image: {{ .Values.eventcollector.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.eventcollector.initContainers.curlImage.tag | default "8.12.1" }}
+          command: ["/bin/sh", "-c"]
+          args:
+            [
+                "while [[ $(curl -sw '%{http_code}' http://strimzi-topic-operator.kafka.svc.cluster.local:8080/ready -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the to to be ready...'; done; echo 'Connection with to established'",
+            ]
+      {{- end }}
+      priorityClassName: ems-platform-high-priority
+      containers:
+        - image: "{{ .Values.eventcollector.image }}:{{ .Values.eventcollector.tag }}"
+          imagePullPolicy: {{ .Values.eventcollector.pullPolicy }}
+          env:
+          - name: QUARKUS_KAFKA_STREAMS_APPLICATION_ID
+            value: {{ template "eventcollector.fullname" . }}
+          - name: QUARKUS_KAFKA_STREAMS_BOOTSTRAP_SERVERS
+            value: {{ .Values.eventcollector.kafkaBootstrapServers | quote  }}
+          - name: EMS_ELASTIC_URL
+            value: {{ .Values.eventcollector.ConnectionUrls.elastic | quote  }}
+          - name: TOCUrlBase
+            value: {{ .Values.eventcollector.TOCUrlBase | quote }}
+          - name: JAVA_OPTS
+            value: {{ .Values.eventcollector.javaOpts | default "" | quote }}
+      {{- if .Values.eventcollector.env }}
+            - configMapRef:
+                name: {{ template "eventcollector.fullname" . }}-env
+      {{- end }}
+          startupProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
+            httpGet:
+              host:
+              scheme: HTTP
+              path: /q/health/started
+              port: 8081
+          livenessProbe:
+            httpGet:
+              host:
+              scheme: HTTP
+              path: /q/health/live
+              port: 8081
+            failureThreshold: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              host:
+              scheme: HTTP
+              path: /q/health/ready
+              port: 8081
+            failureThreshold: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.eventcollector.resources | nindent 12 }}
+          name: {{ template "eventcollector.fullname" . }}
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 8081
+              name: mgmt
+          volumeMounts:
+            - mountPath: /deployments/logconfig
+              name: event-collector-log-config
+            - name: elastic-client-secrets
+              mountPath: "/opt/ems-platform/config/elastic"
+              readOnly: true
+        {{- if .Values.eventcollector.config }}
+            - mountPath: /deployments/config
+              name: event-collector-config
+        {{- end }}
+      restartPolicy: Always
+      volumes:
+        - name: elastic-client-secrets
+        {{- if eq (include "platform" .) "onprem" }}
+          secret:
+            secretName: internal-elastic-admin-client
+        {{- else if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+                secretProviderClass: "{{ .Values.eventcollector.secrets.internal_elastic_client | replace "_" "-" }}"
+        {{- end }}
+        - name: event-collector-log-config
+          configMap:
+            name: {{ template "eventcollector.fullname" . }}-log-config
+            defaultMode: 0644
+        {{- if .Values.eventcollector.config }}
+        - name: event-collector-config
+          configMap:
+            name: {{ template "eventcollector.fullname" . }}-config
+            defaultMode: 0644
+        {{- end }}
+{{- end }}

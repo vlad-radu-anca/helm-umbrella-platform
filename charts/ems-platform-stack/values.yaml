@@ -1,0 +1,48 @@
+global:
+  loadBalancerIP: "1.2.3.4"
+  dev_mode: false
+  BRAND_NAME: "ems-platform"
+  endpoint: "ems.example.local"
+  emsui_subdomain: "emsui"
+  user_default_password: ""
+  ngf_enabled: true
+  cpe_support:
+    enabled: false
+  enb_support:
+    enabled: false
+  spc_support:
+    enabled: true
+    address: "confd-headless"
+    serial_number: "SP0-0024080699"
+    wss_address: "spark-hl"
+  smallcell_support: # small cell 5g support
+    enabled: true
+  dbs:
+    mongo:
+      name: tocdb
+  ConnectionUrls:
+    elastic: http://elastic:9200
+    spark: http://spark:4041
+    coreApi: http://core-api:9000
+    certsmgmt: http://ems-certs-mgmt:7702
+    keycloak:
+      aws: http://keycloak-headless.keycloak.svc.cluster.local:8080/auth
+      onprem: http://keycloak/auth
+    mongo:
+      aws:
+        uri: mongodb+srv://cluster0.example.mongodb.net
+      onprem:
+        uri: mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0
+    pgDb:
+      dbname: ems-platform
+      host: postgresql-hl
+      port: 5432
+      user: ems-platform
+  platform: onprem
+
+  emsui:
+    serial_number: "EM0-0000000000"
+
+  kibana:
+    elasticsearchFullname: elasticsearch-helm
+

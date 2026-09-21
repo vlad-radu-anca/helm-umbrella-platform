@@ -1,0 +1,24 @@
+{{- if .Values.swagger.smallcell_support.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swagger-application-config
+data:
+  application.yaml: |
+    app:
+      name: "swagger"
+      port: 42002
+      brandName: "{{ .Values.swagger.BRAND_NAME }}"
+      swaggerHost: "{{ include "swagger.host" . }}:9443"
+      devMode: false
+      serviceDocs:
+        - name: "api-gw"
+          url: "http://apigw-headless:7702/swagger/doc.json"
+        - name: "ems-certs-mgmt"
+          url: "http://ems-certs-mgmt-headless:7702/swagger/doc.json"
+        - name: "cts"
+          url: "http://cts-headless:7701/swagger/doc.json"
+        - name: "toc"
+          url: "http://toc-headless:7001/swagger/doc.json"
+{{- end }}

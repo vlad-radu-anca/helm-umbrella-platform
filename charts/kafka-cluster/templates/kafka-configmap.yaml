@@ -1,0 +1,12 @@
+{{- if and .Values.kafkaCluster.enabled .Values.kafkaCluster.metrics.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.kafkaCluster.metrics.configMapName }}
+  namespace: {{ .Values.kafkaCluster.namespace }}
+  labels:
+    app: strimzi
+data:
+  {{ .Values.kafkaCluster.metrics.configMapKey }}: |
+{{ .Files.Get "files/kafka-metrics-config.yml" | indent 4 }}
+{{- end }}

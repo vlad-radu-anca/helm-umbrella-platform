@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: grafana-configure-job
+  labels:
+    component: grafana-configure-job
+spec:
+  ttlSecondsAfterFinished: 1800
+  template:
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      initContainers:
+        - name: wait-for-grafana
+          image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+          command: [ "/bin/sh", "-c" ]
+          env:
+            - name: GRAFANA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: internal-grafana   # Name of the Kubernetes Secret
+                  key: grafana-username
+            - name: GRAFANA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: internal-grafana 
+                  key: grafana-password
+          args:
+            [
+                "while [[ $(curl -sw '%{http_code}' -u \"$GRAFANA_USERNAME:$GRAFANA_PASSWORD\" http://grafana:3001/api/org -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the grafana to be ready...'; done; echo 'Connection with grafana established'",
+            ]
+      restartPolicy: Never
+      containers:
+        - env:
+            - name: GRAFANA_HOST
+              valueFrom:
+                configMapKeyRef:
+                  key: GRAFANA_HOST
+                  name: grafana-host
+            - name: GRAFANA_PORT
+              valueFrom:
+                configMapKeyRef:
+                  key: GRAFANA_PORT
+                  name: grafana-host
+            - name: GRAFANA_URL
+              valueFrom:
+                configMapKeyRef:
+                  key: GRAFANA_URL
+                  name: grafana-host
+            - name: ELK_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: internal-elastic-admin-client   # Name of the Kubernetes Secret
+                  key: elk-username
+            - name: ELK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: internal-elastic-admin-client 
+                  key: elk-password
+            - name: GRAFANA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: internal-grafana   # Name of the Kubernetes Secret
+                  key: grafana-username
+            - name: GRAFANA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: internal-grafana
+                  key: grafana-password
+          image: "{{ .Values.job.grafana.image }}:{{ .Values.job.grafana.tag }}"
+          imagePullPolicy: {{ .Values.job.grafana.pullPolicy }}
+          name: grafana-configure-job
+          args:
+            - /etc/grafana/configGrafana.sh
+          resources: {}

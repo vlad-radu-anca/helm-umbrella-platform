@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "topicOperator": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "serviceAccountName": { "type": "string" },
+        "containerName": { "type": "string" },
+        "image": { "type": "string" },
+        "runCommand": { "type": "string" },
+        "tmpSizeLimit": { "type": "string" },
+        "resourceLabels": { "type": "string" },
+        "kafkaBootstrapServers": { "type": "string" },
+        "fullReconciliationIntervalMs": { "type": "string" },
+        "logLevel": {
+          "type": "string",
+          "enum": ["INFO", "DEBUG", "WARN", "ERROR"]
+        },
+        "tlsEnabled": {
+          "type": "string",
+          "enum": ["true", "false"]
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "memory": { "type": "string" },
+                "cpu": { "type": "string" }
+              },
+              "required": ["memory", "cpu"]
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "memory": { "type": "string" },
+                "cpu": { "type": "string" }
+              },
+              "required": ["memory", "cpu"]
+            }
+          },
+          "required": ["limits", "requests"]
+        },
+        "strategyType": {
+          "type": "string",
+          "enum": ["Recreate", "RollingUpdate"]
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "object" },
+              { "type": "null" }
+            ]
+          }
+        },
+        "tolerations": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "kafkaCluster": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" }
+          },
+          "required": ["enabled"]
+        },
+        "readinessPort": { "type": "integer" },
+        "initContainers": {
+          "type": "object",
+          "properties": {
+            "busyboxImage": {
+              "type": "object",
+              "properties": {
+                "repo": { "type": "string" },
+                "tag": { "type": "string" }
+              },
+              "required": ["repo", "tag"]
+            }
+          },
+          "required": ["busyboxImage"]
+        }
+      },
+      "required": [
+        "name",
+        "replicaCount",
+        "serviceAccountName",
+        "containerName",
+        "image",
+        "runCommand",
+        "tmpSizeLimit",
+        "resourceLabels",
+        "kafkaBootstrapServers",
+        "fullReconciliationIntervalMs",
+        "logLevel",
+        "tlsEnabled",
+        "resources",
+        "strategyType",
+        "nodeSelector",
+        "tolerations",
+        "affinity",
+        "kafkaCluster",
+        "readinessPort",
+        "initContainers"
+      ]
+    }
+  },
+  "required": ["topicOperator"]
+}

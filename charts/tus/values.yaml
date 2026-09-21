@@ -1,0 +1,70 @@
+endpoint: "ems.example.local"
+
+platform: onprem # or aws
+
+dev_mode: false
+
+tus:
+  loadBalancerIP: "0.0.0.0"
+  enabled: true
+  image: tusproject/tusd
+  tag: v2.8.0
+  pullPolicy: IfNotPresent
+  replicaCount: 1
+  imagePullSecrets: [name: "regcred"]
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  
+  storage:
+    size: 50Gi
+    storageClassName: "local-path"
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  consumer:
+    image: vlad-radu-anca/tus-consumer
+    tag: 5.0.latest
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  
+  kafkaProxy:
+    image: vlad-radu-anca/tus-kafka-proxy
+    tag: 5.0.latest
+    resources:
+      limits:
+        cpu: 300m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  
+  nodeSelector:
+    aws:
+      eks-managed-node-group: ems-platform
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+
+# Init containers configuration  
+initContainers:
+  busyboxImage:
+    repo: busybox
+    tag: 1.36.1
+
+securityContext:
+  fsGroup: 10000
+  runAsUser: 10000
+  runAsGroup: 10000

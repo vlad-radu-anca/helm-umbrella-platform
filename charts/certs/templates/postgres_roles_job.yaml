@@ -1,0 +1,33 @@
+{{- if .Values.job.pg_roles.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pg-insert-roles-job
+  labels:
+    component: pg-insert-roles-job
+spec:
+  ttlSecondsAfterFinished: 1000
+  template:
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ .Values.initContainers.busyboxImage.repo | default "busybox" }}:{{ .Values.initContainers.busyboxImage.tag | default "1.36.0" }}
+          command: ["sh", "-c", 'until nslookup postgresql | grep "Name:"; do echo waiting for postgres pod...; sleep 2; done']
+      restartPolicy: Never
+      containers:
+        - image: "{{ .Values.job.pg_roles.image }}:{{ .Values.job.pg_roles.tag }}"
+          imagePullPolicy: {{ .Values.job.pg_roles.pullPolicy }}
+          name: pg-insert-roles-job
+          env:
+            - name: PGHOST
+              value: "postgresql"
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: "ems-platform"
+            - name: PGUSER
+              value: "ems-platform"
+          resources: {}
+{{- end }}

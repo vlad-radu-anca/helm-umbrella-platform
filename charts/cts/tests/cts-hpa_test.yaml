@@ -1,0 +1,199 @@
+suite: test cts hpa
+templates:
+  - cts-hpa.yaml
+tests:
+  - it: should not render when smallcell_support is disabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when autoscaling is disabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render HPA when both smallcell_support and autoscaling are enabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HorizontalPodAutoscaler
+      - isAPIVersion:
+          of: autoscaling/v2
+
+  - it: should have correct metadata
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-cts-helm
+      - equal:
+          path: metadata.labels.app
+          value: cts-helm
+      - equal:
+          path: metadata.labels.release
+          value: RELEASE-NAME
+
+  - it: should target correct deployment
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: spec.scaleTargetRef.apiVersion
+          value: apps/v1
+      - equal:
+          path: spec.scaleTargetRef.kind
+          value: Deployment
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: cts
+
+  - it: should set replica limits from values
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+      cts.autoscaling.minReplicas: 1
+      cts.autoscaling.maxReplicas: 2
+    asserts:
+      - equal:
+          path: spec.minReplicas
+          value: 1
+      - equal:
+          path: spec.maxReplicas
+          value: 2
+
+  - it: should include default CPU and memory metrics from values
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+      cts.autoscaling.targetCPUUtilizationPercentage: 90
+      cts.autoscaling.targetMemoryUtilizationPercentage: 90
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 90
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 90
+
+  - it: should include CPU metrics when targetCPUUtilizationPercentage is set
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+      cts.autoscaling.targetCPUUtilizationPercentage: 70
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 70
+
+  - it: should include memory metrics when targetMemoryUtilizationPercentage is set
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+      cts.autoscaling.targetMemoryUtilizationPercentage: 80
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 80
+
+  - it: should not include CPU metrics when targetCPUUtilizationPercentage is null
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+      cts.autoscaling.targetCPUUtilizationPercentage: null
+      cts.autoscaling.targetMemoryUtilizationPercentage: 80
+    asserts:
+      - notContains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 80
+
+  - it: should handle minimum CPU percentage
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+      cts.autoscaling.targetCPUUtilizationPercentage: 1
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 1
+
+  - it: should handle high values for memory percentage
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.autoscaling.enabled: true
+      cts.autoscaling.targetMemoryUtilizationPercentage: 95
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 95

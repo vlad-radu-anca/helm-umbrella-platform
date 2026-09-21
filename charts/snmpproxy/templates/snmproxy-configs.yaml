@@ -1,0 +1,144 @@
+---
+apiVersion: v1
+data:
+  ems-config.json: |+
+    {
+      "description": "this is the reference file for environment properties",
+      "ENV_NAME": "local",
+      "DIESEL_URL": {
+        "type": "diesel",
+        "url": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000",
+        "X-Api-Key": "{{ .Values.apiKey }}"
+      },
+      "ELASTIC_URL": {
+        "type": "elastic",
+        "url": "{{ .Values.ConnectionUrls.elastic }}",
+        "Authorization": "Basic {{ .Values.elasticAuthBase64 }}"
+      },
+      "ems-collector": {
+        "ACS_ENABLED": "{{ .Values.cpeSupport.enabled }}",
+        "ENB_ENABLED": "{{ .Values.enbSupport.enabled }}",
+        "SMALLCELL_ENABLED": "{{ .Values.smallcellSupport.enabled }}",
+        "SPC_ENABLED": "{{ .Values.spcSupport.enabled }}",
+        "SPC_LOADBALANCER_ADDRESS": "{{ .Values.loadBalancerIP }}",
+        "SPC_IPADDRESS": "{{ .Values.spcSupport.address }}",
+        "SPC_SN": "{{ .Values.spcSupport.serial_number }}",
+        "SPC_TO_SPARK_WSS_ADDRESS": "{{ .Values.spcSupport.wss_address }}",
+        "SPC_NETCONF_CALLHOME_PORT": 4336,
+        "SPC_ORAN_WEBSOCKET_PORT": 4044,
+        "SMALLCELL_LOADBALANCER_ADDRESS": "https://{{ .Values.loadBalancerIP }}:4043",
+        "ACTOR_WORKERS": 600,
+        "DISCOVERY_ENABLED": "true",
+        "REST_ENABLED": "true",
+        "SPARK_NETCONF_CALLHOME_PORT": 4335,
+        "SPARK_REST_PORT": 4041,
+        "SPARK_ORAN_WEBSOCKET_PORT": 4043,
+        "SPARK_POLLING_INTERVAL": 30,
+        "SPARK_INVENTORY_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest",
+        "SPARK_ACS_URL": "http://genieacsnbi.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:7557/devices",
+        "ACS_META_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/meta/query?deviceType=cpe",
+        "SPARK_ELASTIC_URL": [
+          "{{ .Values.ConnectionUrls.elastic }}/"
+        ],
+        "ENB_INVENTORY_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/device/enb",
+        "ENB_META_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/meta/query?deviceType=enb",
+        "ENB_ELASTIC_URL": [
+          "{{ .Values.ConnectionUrls.elastic }}/"
+        ],
+        "SMALLCELL_KAFKA": {
+          "bootstrap.servers" : "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+        },
+        "SNMP_HTTP_READ_TIMEOUT_SECS" : 5,
+        "ENB_HTTP_CONN_TIMEOUT_SECS"  : 5,
+        "ENB_HTTP_READ_TIMEOUT_SECS"  : 5,
+        "INV_HTTP_CONN_TIMEOUT_SECS"  : 10,
+        "INV_HTTP_READ_TIMEOUT_SECS"  : 30,
+        "ACS_HTTP_READ_TIMEOUT_SECS"  : 15,
+        "ENB_EVENTS_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/device/",
+        "ENB_RECEIVER_PROPERTIES": {
+        },
+        "ACS_RECEIVER_PROPERTIES": {
+          "INFORM_INTERVAL": "300"
+        },
+        "ENB_INVENTORY_PROPERTIES": {
+          "X-Api-Key": "{{ .Values.apiKey }}"
+        },
+        "IGNORE_FIELDS": {
+          "inv-enb": "tags,deviceInfo",
+          "inv-cpe": "tags,deviceInfo"
+        },
+         "cpe-status": [
+           {
+             "THRESHOLD": "PT0H",
+             "STATE": "operational"
+           },
+           {
+             "THRESHOLD": "PT1H",
+             "STATE": "degraded"
+           },
+           {
+             "THRESHOLD": "PT2H",
+             "STATE": "missing"
+           },
+           {
+             "THRESHOLD": "P7D",
+             "STATE": "deleted"
+           }
+         ]
+      },
+      "ems-discovery": {
+        "EVENTS_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/device/",
+        "CONFIG_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/react/ems.snmprest.discovery.config",
+        "WEBHOOK_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/ems-discovery/foundEnb"
+      },
+      "ems-gateway": {
+        "REPORT_TOKEN": "{{ .Values.reportToken }}",
+        "BULK_GROUP_BY": 100,
+        "BULK_GROUP_LIMIT": 1000
+      },
+      "ems-notifications": {
+        "SSE_NOTIFICATION_WORKER": 5,
+        "SSE_SUBSCRIPTION_WORKER": 5,
+        "SSE_ENB_EVENT_WORKER": 2,
+        "SSE_ENB_SNMP_PROXY_ENABLED": "{{ .Values.sseEnbSnmpProxyEnabled }}",
+        "SSE_ENB_SNMP_PROXY_URL": "http://snmpproxy.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:16162/rest/v1/notification"
+      },
+      "ems-ui": {
+      },
+      "ems-snmpproxy": {
+        "SNMPPROXY_HOST_NAME": "0.0.0.0",
+        "SNMPPROXY_AGENT_PORT": {{ .Values.snmpproxy_agent_port }},
+        "SNMPPROXY_AGENT_ENGINEID": "80:8F:82:01:C0:A8:05:1C",
+        "SNMPPROXY_NOTIFICATION_PORT": {{ .Values.snmpproxy_notification_port }},
+        "SNMPPROXY_TRAP_PORT": {{ .Values.snmpproxy_trap_port }},
+        "SNMPPROXY_MEMORY": "{{ .Values.snmpproxy_memory }}",
+        "SNMPPROXY_JVM_OPTIONS": "{{ .Values.snmpproxy_jvm_options }}",
+        "SNMPPROXY_CLIENT_URL": "http://snmpproxy.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:16162/rest/v1/notification",
+        "NUM_SNMP_ACTOR_WORKERS":10,
+        "USER_TARGETS": [],
+        "COMMUNITY_TARGETS": []
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: ems-config
+---
+{{- if .Values.enbSupport.enabled }}
+apiVersion: v1
+data:
+  log4j.snmpproxy.properties: |
+    # Set everything to be logged to the console
+    log4j.rootLogger=INFO, console
+    log4j.appender.console=org.apache.log4j.ConsoleAppender
+    log4j.appender.console.target=System.err
+    log4j.appender.console.layout=org.apache.log4j.PatternLayout
+    log4j.appender.console.layout.ConversionPattern=%d{MM/dd HH:mm:ss,SSS} %-3p [%-15.15t] %c{2} [%4L]: %m%n
+    # Settings to quiet third party logs that are too verbose
+    log4j.logger.org.apache.http=ERROR
+    log4j.logger.ems=INFO
+    log4j.logger.ems.ems.snmp.proxy=INFO
+    log4j.logger.org.snmp4j=INFO
+kind: ConfigMap
+metadata:
+  name: snmpproxy-properties
+{{- end }}

@@ -1,0 +1,258 @@
+suite: test cts deployment
+templates:
+  - cts-deployment.yaml
+tests:
+  - it: should render empty content when smallcell_support is disabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 1
+
+  - it: should render deployment when smallcell_support is enabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: cts
+
+  - it: should use correct image and tag from values
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.image: vlad-radu-anca/cts
+      cts.tag: "5.0.latest"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "vlad-radu-anca/cts:5.0.latest"
+
+  - it: should set correct replica count from values
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.replicaCount: 2
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 2
+
+  - it: should set security context correctly
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 10000
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 10000
+      - equal:
+          path: spec.template.spec.securityContext.runAsGroup
+          value: 10000
+
+  - it: should set priority class
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: ems-platform-high-priority
+
+  - it: should configure image pull secrets from values
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.imagePullSecrets:
+        - name: regcred
+    asserts:
+      - contains:
+          path: spec.template.spec.imagePullSecrets
+          content:
+            name: regcred
+
+  - it: should mount application config volume
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: cts-application-config
+            configMap:
+              name: cts-application-config
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: cts-application-config
+            mountPath: /app/config/application.yaml
+            subPath: application.yaml
+
+  - it: should configure mongo init container with values from config
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.ConnectionUrls.mongo.onprem.uri: "mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0"
+      cts.initContainers.mongoImage.repo: "public.ecr.aws/bitnami/mongodb"
+      cts.initContainers.mongoImage.tag: "8.0.6-debian-12-r0"
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-dependency
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: "public.ecr.aws/bitnami/mongodb:8.0.6-debian-12-r0"
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: MONGO_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: external-mongo-emsdb-secret
+                key: mongo-username
+
+  - it: should configure toc init container with values from config
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.initContainers.curlImage.repo: "curlimages/curl"
+      cts.initContainers.curlImage.tag: "8.12.1"
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: wait-for-toc
+      - equal:
+          path: spec.template.spec.initContainers[1].image
+          value: "curlimages/curl:8.12.1"
+
+  - it: should configure container environment variables
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CTS_REPO_REPONAME
+            valueFrom:
+              secretKeyRef:
+                name: cts-repo-secret
+                key: CTS_REPO_REPONAME
+
+  - it: should set resources from values
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.resources:
+        limits:
+          cpu: 800m
+          memory: 1000Mi
+        requests:
+          cpu: 250m
+          memory: 500Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            limits:
+              cpu: 800m
+              memory: 1000Mi
+            requests:
+              cpu: 250m
+              memory: 500Mi
+
+  - it: should mount secrets for onprem platform
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: pg-perms-ems-platform-secrets
+            secret:
+              secretName: internal-pg-client
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mongo-emsdb-secrets
+            secret:
+              secretName: external-mongo-emsdb-secret
+
+  - it: should mount CSI secrets for aws platform
+    set:
+      platform: aws
+      cts.smallcell_support.enabled: true
+      cts.secrets:
+        internal_gh_ctd_repo_client: "ems-platform_internal_gh_ctd_repo_client_xlv"
+        internal_pg_client: "ems-platform_internal_pg_client_xlv"
+        internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
+        internal_keycloak_toc_client: "ems-platform_internal_keycloak_toc_client_xlv"
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: gh-secrets-ctd
+            csi:
+              driver: secrets-store.csi.k8s.io
+              readOnly: true
+              volumeAttributes:
+                secretProviderClass: "ems-platform-internal-gh-ctd-repo-client-xlv"
+
+  - it: should use aws node selector when platform is aws
+    set:
+      platform: aws
+      cts.smallcell_support.enabled: true
+      cts.nodeSelector.aws:
+        karpenter-node: ems-platform-autoscalernode-large
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector
+          value:
+            karpenter-node: ems-platform-autoscalernode-large
+
+  - it: should not have nodeSelector for onprem when empty
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.nodeSelector.onprem: {}
+    asserts:
+      - notExists:
+          path: spec.template.spec.nodeSelector
+
+  - it: should set tolerations when provided
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.tolerations:
+        - key: node-type
+          operator: Equal
+          value: cts
+          effect: NoSchedule
+    asserts:
+      - equal:
+          path: spec.template.spec.tolerations
+          value:
+            - key: node-type
+              operator: Equal
+              value: cts
+              effect: NoSchedule
+
+  - it: should handle empty tolerations array when tolerations exist
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.tolerations: []
+    asserts:
+      - notExists:
+          path: spec.template.spec.tolerations

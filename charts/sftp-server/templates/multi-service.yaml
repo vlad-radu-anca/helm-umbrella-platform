@@ -1,0 +1,51 @@
+{{- if eq .Values.platform "onprem" }}
+{{- if .Values.sftp.service.external_ingress_IP }}
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    autoheal: "true"
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  name: {{ include "sftp-server.fullname" . }}-external-ip
+  labels:
+    app.kubernetes.io/name: {{ include "sftp-server.name" . }}
+    helm.sh/chart: {{ include "sftp-server.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  type: {{ .Values.sftp.service.type }}
+  ports:
+    - port: {{ .Values.sftp.service.port }}
+      targetPort: ssh
+      protocol: TCP
+      name: ssh
+  selector:
+    app.kubernetes.io/name: {{ include "sftp-server.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+---
+{{- if .Values.sftp.service.internal_ingress_IP }}
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    autoheal: "true"
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  name: {{ include "sftp-server.fullname" . }}-internal-ip
+  labels:
+    app.kubernetes.io/name: {{ include "sftp-server.name" . }}
+    helm.sh/chart: {{ include "sftp-server.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  type: {{ .Values.sftp.service.type }}
+  ports:
+    - port: {{ .Values.sftp.service.port }}
+      targetPort: ssh
+      protocol: TCP
+      name: ssh
+  selector:
+    app.kubernetes.io/name: {{ include "sftp-server.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+{{- end }}

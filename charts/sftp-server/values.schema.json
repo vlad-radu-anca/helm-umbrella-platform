@@ -1,0 +1,216 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["onprem", "aws"]
+    },
+    "sftp": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          },
+          "required": ["repository", "tag", "pullPolicy"]
+        },
+        "nameOverride": { "type": "string" },
+        "fullnameOverride": { "type": "string" },
+        "service": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "type": { "type": "string" },
+            "port": { "type": "integer" },
+            "external_ingress_IP": { "type": "boolean" },
+            "internal_ingress_IP": { "type": "boolean" }
+          },
+          "required": ["enabled", "type", "port", "external_ingress_IP", "internal_ingress_IP"]
+        },
+        "sftpConfig": {
+          "type": "object",
+          "properties": {
+            "users": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" },
+                  "encrypted": { "type": "boolean" },
+                  "uid": { "type": "string" },
+                  "gid": { "type": "string" },
+                  "dir": { "type": "string" },
+                  "authorizedKeys": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                  },
+                  "mountPath": { "type": "string" }
+                },
+                "required": ["username", "password", "encrypted", "uid", "gid", "authorizedKeys", "mountPath"]
+              }
+            },
+            "hostKeys": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "required": ["users", "hostKeys"]
+        },
+        "init": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "script": { "type": "string" }
+          },
+          "required": ["enabled", "script"]
+        },
+        "debug": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "image": {
+              "type": "object",
+              "properties": {
+                "repository": { "type": "string" },
+                "tag": { "type": "string" },
+                "pullPolicy": { "type": "string" }
+              },
+              "required": ["repository", "tag", "pullPolicy"]
+            }
+          },
+          "required": ["enabled", "image"]
+        },
+        "persistentVolume": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "annotations": {
+              "type": ["object", "null"],
+              "additionalProperties": { "type": "string" }
+            },
+            "accessModes": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "existingClaim": { "type": "string" },
+            "size": { "type": "string" }
+          },
+          "required": ["enabled", "annotations", "accessModes", "existingClaim", "size"]
+        },
+        "vxlanController": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "annotationKey": { "type": "string" },
+            "metadataKey": { "type": "string" },
+            "image": {
+              "type": "object",
+              "properties": {
+                "repository": { "type": "string" },
+                "tag": { "type": "string" },
+                "pullPolicy": { "type": "string" }
+              },
+              "required": ["repository", "tag", "pullPolicy"]
+            },
+            "network": { "type": "string" },
+            "ip": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "route": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": { "type": "string" },
+                    "memory": { "type": "string" }
+                  }
+                },
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": { "type": "string" },
+                    "memory": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "required": ["enabled", "annotationKey", "metadataKey", "image", "network", "ip", "route", "resources"]
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "sftp": {
+              "type": "object",
+              "properties": {
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "memory": { "type": "string" }
+                  }
+                },
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": { "type": "string" },
+                    "memory": { "type": "string" }
+                  },
+                  "required": ["cpu", "memory"]
+                }
+              }
+            },
+            "debug": {
+              "type": "object",
+              "properties": {
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": { "type": "string" },
+                    "memory": { "type": "string" }
+                  }
+                },
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": { "type": "string" },
+                    "memory": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nodeSelector": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "string" }
+        },
+        "tolerations": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "affinity": {
+          "type": ["object", "null"],
+          "additionalProperties": true
+        }
+      },
+      "required": ["image", "service", "sftpConfig", "init", "debug", "persistentVolume", "vxlanController", "resources"]
+    }
+  },
+  "required": ["platform", "sftp"]
+}

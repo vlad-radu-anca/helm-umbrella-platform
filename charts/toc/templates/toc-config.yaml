@@ -1,0 +1,209 @@
+{{- if .Values.toc.smallcell_support.enabled }}
+---
+apiVersion: v1
+data:
+  application.yaml: |
+    app:
+      name: "toc"
+      port: 7001
+      baseUrl: http://toc-headless
+      internalHost: toc-headless:7001
+      devMode: {{ .Values.dev_mode }}
+      skipAuth: false
+      rateLimit:
+        maxRequests: 500
+        expiration: 60 #time in seconds
+
+    apis:
+      minOrgAdminFullUsersPerOrganizationConstraint: 2
+      minNetworkAdminFullUsersPerOrganizationConstraint: 1
+
+    support:
+      spcEnabled: {{ .Values.toc.spc_support.enabled }}
+
+    swagger:
+      generate: false
+      emsUiUrl: "https://{{ .Values.toc.emsui_subdomain }}.{{ .Values.endpoint }}"
+      keycloakUrl: "https://keycloak.{{ .Values.endpoint }}/auth"
+    
+    keycloakClient:
+      {{- if eq .Values.platform "aws" }}
+      url: "{{ .Values.toc.ConnectionUrls.keycloak.aws }}/"
+      {{- else }}
+      url: "{{ .Values.toc.ConnectionUrls.keycloak.onprem }}/"
+      {{- end }}
+      realmId: "DefaultTenant"
+      executeActionsEmailLifespan: 43200
+
+    mongoClient:
+      {{- if eq .Values.platform "aws" }}
+      uri: {{ .Values.toc.ConnectionUrls.mongo.aws.uri }}
+      {{- else }}
+      uri: {{ .Values.toc.ConnectionUrls.mongo.onprem.uri }}
+      authSource: tocdb
+      {{- end }}
+      database: {{ .Values.toc.dbs.mongo.name }}
+      connectionTimeout: 30
+      socketTimeout: 10
+      serverSelection: 30
+      minPoolSize: 1
+      maxPoolSize: 20
+      heartBeatInterval: 10
+      retryWrites: true
+
+    sparkClient:
+      url: "{{ .Values.toc.ConnectionUrls.spark }}"
+      connectionTimeout: 30
+    
+    spc:
+      ip: {{ .Values.toc.spc_support.address }}
+      interactionMatrixDeviceLimit: 16
+
+    coreApiClient:
+      url: "{{ .Values.toc.ConnectionUrls.coreApi }}/diesel/rest/v1/ems/local/"
+      connectionTimeout: 30
+
+    rbacDb:
+      host: "{{ .Values.toc.ConnectionUrls.pgDb.host }}"
+      port: {{ .Values.toc.ConnectionUrls.pgDb.port }}
+      connectionTimeout: 30
+    
+    elasticClient:
+      addresses:
+        - "{{ .Values.toc.ConnectionUrls.elastic }}"
+      connectionTimeout: 30
+    
+    logger:
+      logLevel: "DEBUG"
+      callerLevel: "DEBUG"
+      stackTraceLevel: "ERROR"
+      charLimit: 1024
+      formatJson: true
+
+    fiber:
+      bodyLimit: 200 # in MB
+
+    ctsApp:
+      name: "cts"
+      port: 7701
+      baseUrl: http://cts-headless
+
+    fileTransfer:
+      {{- if eq .Values.platform "aws" }}
+      awsMode: "true"
+      accountId: "{{ .Values.toc.aws_config.accountId }}"
+      region: "{{ .Values.toc.aws_config.awsCredentials.region }}"
+      kmsKey: "{{ .Values.toc.aws_config.kmsKey }}"
+      hostedZoneId: "{{ .Values.toc.aws_config.hostedZoneId }}"
+      sftpDnsName: "{{ .Values.toc.aws_config.sftp_subdomain }}.{{ .Values.endpoint }}"
+      recordValue: "{{ .Values.toc.aws_config.recordValue }}"
+      {{- else }}
+      awsMode: "false"
+      accountId: {{ .Values.toc.aws_config.accountId }}
+      region: {{ .Values.toc.aws_config.awsCredentials.region }}
+      prefix: "{{ .Values.toc.aws_config.resource_prefix }}_"
+      suffix: "_{{ .Values.toc.aws_config.resource_suffix }}"
+      kmsKey: {{ .Values.toc.aws_config.kmsKey }}
+      hostedZoneId: {{ .Values.toc.aws_config.hostedZoneId }}
+      sftpDnsName: {{ .Values.toc.aws_config.sftp_subdomain }}.{{ .Values.endpoint }}
+      recordValue: {{ .Values.toc.aws_config.recordValue }}
+      {{- end }}
+      sftpServerType: {{ .Values.toc.aws_config.sftp_server_type }}
+      deploymentName: "ems-platform-sftp-server"
+      configMapName: "ems-platform-sftp-server-users"
+      sftpIp: "{{ .Values.toc.loadBalancerIP }}"
+      namespace: "{{ .Release.Namespace }}"
+      {{- if eq .Values.platform "aws" }}
+      storageClassName: {{- if and (eq .Values.toc.aws_config.sftp_server_type "oem") }} ebs-csi-encrypted-gp3 {{- else }} local-path {{- end }}
+      {{- else }}
+      storageClassName: local-path
+      {{- end }}
+      usageLimits:
+        warningThreshold: "{{ .Values.toc.usageLimits.warningThreshold }}"
+        criticalThreshold: "{{ .Values.toc.usageLimits.criticalThreshold }}"
+        percentageToFree: "{{ .Values.toc.usageLimits.percentageToFree }}"
+        imageThresholdMB: "{{ .Values.toc.usageLimits.imageThresholdMB }}"
+        logThresholdMB: "{{ .Values.toc.usageLimits.logThresholdMB }}"
+    
+    kafka:
+      kafkaBootstrapServers: {{ .Values.toc.topicOperator.kafkaBootstrapServers }}
+      connectionTimeout: 30
+
+kind: ConfigMap
+metadata:
+  name: toc-application-config
+{{- end }}
+
+---
+
+apiVersion: v1
+data:
+  toc-init.sh: |-
+{{ .Files.Get "src/toc-init.sh" | indent 4 }}
+
+kind: ConfigMap
+metadata:
+  name: toc-init-job
+  
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: toc-device-models-config
+data:
+  base-device-model-features.yaml: |
+    models:
+      PC-400:
+        modelName: "PC-400"
+        features:
+          - indoor: false
+          - wifi: false
+      PC-400i:
+        modelName: "PC-400i"
+        features:
+          - indoor: true
+          - wifi: false
+      PCW-400:
+        modelName: "PCW-400"
+        features:
+          - indoor: false
+          - wifi: true
+      PCW-400i:
+        modelName: "PCW-400i"
+        features:
+          - indoor: true
+          - wifi: true
+      PCRF-400:
+        modelName: "PCRF-400"
+        features:
+          - indoor: false
+          - wifi: true
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: toc-rebranded-device-models-config
+data:
+  rebranded-device-model-mapping.yaml: |
+    brands:
+      ems:
+        deviceModels:
+          - brandModel: "PC-400"
+            baseModel: "PC-400"
+          - brandModel: "PC-400i"
+            baseModel: "PC-400i"
+          - brandModel: "PCW-400"
+            baseModel: "PCW-400"
+          - brandModel: "PCW-400i"
+            baseModel: "PCW-400i"
+          - brandModel: "PCRF-400"
+            baseModel: "PCRF-400"
+      agil:
+        deviceModels:
+          - brandModel: "5GSC-250-5GNR"
+            baseModel: "PC-400"
+          - brandModel: "5GSC-250-WIFI"
+            baseModel: "PCW-400i"

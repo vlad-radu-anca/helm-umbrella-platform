@@ -1,0 +1,226 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: core-api
+  labels:
+    {{- include "coreApi.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "coreApi.selectorLabels" . | nindent 6 }}
+  serviceName: core-api
+  replicas: {{ .Values.coreApi.replicaCount }}
+  template:
+    metadata:
+      {{- with .Values.coreApi.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "coreApi.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      {{- with .Values.coreApi.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      initContainers:
+        - name: wait-for-dependency
+          image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+          command: ["/bin/sh", "-c"]
+          env:
+            - name: ELK_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client
+                  {{- end }}
+                  key: elk-username
+            - name: ELK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client 
+                  {{- end }}
+                  key: elk-password
+          args:
+            - >
+              while [[ $(curl -sw '%{http_code}' -u "$ELK_USERNAME:$ELK_PASSWORD" {{ .Values.ConnectionUrls.elastic }}/active-alarms/_search -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the Elastic to be ready...'; done; echo 'Connection with Elastic established'
+        - name: wait-for-keycloak
+          image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - >
+              while [[ $(curl -sw '%{http_code}' {{ if eq .Values.platform "aws" }}{{ .Values.ConnectionUrls.keycloak.aws }}{{ else }}{{ .Values.ConnectionUrls.keycloak.onprem }}{{ end }}/realms/DefaultTenant -o /dev/null) -ne 200 ]]; do sleep 30; echo 'Waiting for the keycloak to be ready...'; done; echo 'Connection with keycloak established'
+
+      priorityClassName: ems-platform-high-priority
+
+      containers:
+        - name: core-api
+          image: "{{ .Values.coreApi.image }}:{{ .Values.coreApi.tag }}"
+          imagePullPolicy: {{ .Values.coreApi.pullPolicy }}
+          args:
+            - /bin/sh
+            - -c
+            - /home/razvanc/rk/start.sh
+          ports:
+            - containerPort: 9000
+              name: http
+            - containerPort: 9002
+              name: akka-cluster
+            - containerPort: 8558
+              name: akka-management
+          startupProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 15
+            successThreshold: 1
+            failureThreshold: 30
+            httpGet:
+              scheme: HTTP
+              path: /diesel/rest/v1/ems/local/started
+              port: 9000
+          livenessProbe:
+            httpGet:
+              path: /diesel/rest/diesel/ping
+              port: 9000
+            failureThreshold: 3
+            periodSeconds: 30
+            timeoutSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /diesel/rest/diesel/ping
+              port: 9000
+            failureThreshold: 4
+            periodSeconds: 10
+            timeoutSeconds: 20
+          resources:
+            {{- toYaml .Values.coreApi.resources | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: core-api-config-env
+            - configMapRef:
+                name: elastic-host-env
+          env:
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: HOST_DOMAIN
+              value: "$(HOST).{{ .Values.coreApi.internal_cluster_hostname }}.$(MY_POD_NAMESPACE).svc.cluster.local"
+            - name: ELK_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: internal-elastic-admin-client
+                  key: elk-username
+            - name: ELK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: internal-elastic-admin-client
+                  key: elk-password
+          volumeMounts:
+            - name: core-api-properties
+              mountPath: /home/razvanc/rk/dist/conf/logback.prod.xml
+              subPath: logback.core-api.xml
+            - name: keycloak-admin-client-secrets
+              mountPath: /opt/ems-platform/config/keycloakAdmin
+              readOnly: true
+            - name: keycloak-core-api-secrets
+              mountPath: /opt/ems-platform/config/keycloak
+              readOnly: true
+            - name: elastic-client-secrets
+              mountPath: /opt/ems-platform/config/elastic
+              readOnly: true
+            - name: pg-perms-ems-platform-secrets
+              mountPath: /opt/ems-platform/config/postgres
+              readOnly: true
+
+      restartPolicy: Always
+
+      {{- if eq (include "platform" .) "aws" }}
+        {{- with .Values.coreApi.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+        {{- with .Values.coreApi.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- else }}
+        {{- with .Values.coreApi.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+
+      {{- with .Values.coreApi.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.coreApi.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      volumes:
+        - name: core-api-properties
+          configMap:
+            name: core-api-properties
+            defaultMode: 0644
+        {{- if eq (include "platform" .) "onprem" }}
+        - name: keycloak-admin-client-secrets
+          secret:
+            secretName: external-keycloak-admin-client
+        - name: keycloak-core-api-secrets
+          secret:
+            secretName: internal-keycloak-core-api-client
+        - name: elastic-client-secrets
+          secret:
+            secretName: internal-elastic-admin-client
+        - name: pg-perms-ems-platform-secrets
+          secret:
+            secretName: internal-pg-client
+        {{- else if eq (include "platform" .) "aws" }}
+        - name: keycloak-admin-client-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.coreApi.secrets.external_keycloak_admin_client | replace "_" "-" }}"
+        - name: keycloak-core-api-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.coreApi.secrets.internal_keycloak_core_api_client | replace "_" "-" }}"
+        - name: elastic-client-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.coreApi.secrets.internal_elastic_client | replace "_" "-" }}"
+        - name: pg-perms-ems-platform-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.coreApi.secrets.internal_pg_client | replace "_" "-" }}"
+        {{- end }}

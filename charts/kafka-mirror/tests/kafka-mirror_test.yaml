@@ -1,0 +1,15 @@
+suite: Kafka Mirror Tests
+templates:
+  - templates/kafka-mirror.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should create a MM2 CR
+    asserts:
+      - equal:
+          path: kind
+          value: KafkaMirrorMaker2
+      - equal:
+          path: metadata.name
+          value: blue-to-green
+

@@ -1,0 +1,35 @@
+{{- if .Values.cts.smallcell_support.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cts
+  labels:
+    {{- include "cts.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.cts.service.type }}
+  ports:
+    - port: {{ .Values.cts.service.port }}
+      targetPort: 7701
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "cts.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cts-headless
+  labels:
+    {{- include "cts.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.cts.service.port }}
+      targetPort: 7701
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "cts.selectorLabels" . | nindent 4 }}
+{{- end }}

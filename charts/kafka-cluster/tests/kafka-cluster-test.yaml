@@ -1,0 +1,20 @@
+suite: Kafka Cluster Tests
+templates:
+  - templates/kafka-cluster.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should create a Kafka resource with correct version and replicas
+    asserts:
+      - equal:
+          path: kind
+          value: Kafka
+      - equal:
+          path: spec.kafka.version
+          value: "3.9.0"
+      - equal:
+          path: spec.kafka.replicas
+          value: 3
+      - equal:
+          path: spec.kafka.config.default.replication.factor
+          value: 3

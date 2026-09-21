@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TUS Helm Chart Values Schema",
+  "description": "Schema validation for TUS Helm chart values.yaml",
+  "type": "object",
+  "required": ["endpoint", "platform", "tus"],
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "endpoint": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9.-]+$"
+    },
+    "platform": {
+      "type": "string",
+      "description": "Deployment platform",
+      "enum": ["onprem", "aws"]
+    },
+    "dev_mode": {
+      "type": "boolean"
+    },
+    "tus": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "loadBalancerIP": {
+          "type": "string",
+          "description": "LoadBalancer IP address for dev mode",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$|^[a-zA-Z0-9.-]+$"
+        },
+        "image": {
+          "type": "string",
+          "description": "Docker image repository",
+          "pattern": "^[a-zA-Z0-9._/-]+$"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Docker image tag",
+          "pattern": "^[a-zA-Z0-9._-]+$"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "description": "Image pull policy",
+          "enum": ["Always", "IfNotPresent"]
+        },
+        "replicaCount": {
+          "type": "integer",
+          "description": "Number of replicas",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "imagePullSecrets": {
+          "type": "array",
+          "description": "Image pull secrets",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Secret name",
+                "pattern": "^[a-z0-9-]+$"
+              }
+            },
+            "required": ["name"]
+          }
+        },
+        "nameOverride": {
+          "type": "string",
+          "description": "Override for the chart name"
+        },
+        "fullnameOverride": {
+          "type": "string",
+          "description": "Override for the full name"
+        },
+        "podAnnotations": {
+          "type": "object",
+          "description": "Pod annotations",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "size": {
+              "type": "string"
+            },
+            "storageClassName": {
+              "type": "string"
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "consumer": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "description": "Docker image repository",
+              "pattern": "^[a-zA-Z0-9._/-]+$"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Docker image tag",
+              "pattern": "^[a-zA-Z0-9._-]+$"
+            },
+            "resources": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "kafkaProxy": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "description": "Docker image repository",
+              "pattern": "^[a-zA-Z0-9._/-]+$"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Docker image tag",
+              "pattern": "^[a-zA-Z0-9._-]+$"
+            },
+            "resources": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "initContainers": {
+      "type": "object",
+      "properties": {
+        "busyboxImage": {
+          "type": "object",
+          "properties": {
+            "repo": {
+              "type": "string",
+              "description": "Docker image repository",
+              "pattern": "^[a-zA-Z0-9._/-]+$"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Docker image tag",
+              "pattern": "^[a-zA-Z0-9._-]+$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

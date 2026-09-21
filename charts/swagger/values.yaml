@@ -1,0 +1,53 @@
+swagger:
+  smallcell_support: # small cell 5g support
+    enabled: true
+  image: vlad-radu-anca/ems-swagger
+  tag: 5.0.latest
+  pullPolicy: Always
+  replicaCount: 2
+  imagePullSecrets: [name: "regcred"]
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 42002
+  resources:
+    limits:
+      cpu: 800m
+      memory: 1000Mi
+    requests:
+      cpu: 250m
+      memory: 500Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 90
+    targetMemoryUtilizationPercentage: 90
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-large
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations: {}
+      # nginx.ingress.kubernetes.io/enable-cors: "false"
+    hosts:
+      - host: swagger.{{ $endpoint }}
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+  initContainers:
+    curlImage:
+      repo: curlimages/curl
+      tag: 8.12.1
+  BRAND_NAME: "ems-platform"
+  ngf:
+    hostname: "emsapi.{{ .Values.endpoint }}"
+
+endpoint: "ems.example.local"

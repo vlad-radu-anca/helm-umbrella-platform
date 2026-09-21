@@ -1,0 +1,56 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ems-ui-app-config
+data:
+  app.json: |
+    {
+      "chartTimeRanges": [
+        { "range": "5m" },
+        { "range": "15m" },
+        { "range": "30m" },
+        { "range": "1h" },
+        { "range": "3h" },
+        { "range": "6h" },
+        { "range": "12h" },
+        { "range": "24h" },
+        { "range": "2d" },
+        { "range": "7d", "default": true }
+      ],
+      "refreshRates": {
+        "devices": 30000,
+        "events": 10000,
+        "orgs": 30000,
+        "templateConfigResources": 30000
+      },
+      "deviceType": {
+        "enb": {{ .Values.emsui.enb_support.enabled }},
+        "cpe": {{ .Values.emsui.cpe_support.enabled }},
+        "spc": {{ .Values.emsui.spc_support.enabled }},
+        "smallcell": {{ .Values.emsui.smallcell_support.enabled }}
+      },
+      "helpCenterBaseUrl": "https://help-center.{{ .Values.endpoint }}",
+      "version": "{{ .Values.emsui.tag }}",
+      "emsSerialNumber": "{{ .Values.emsui.serial_number }}",
+      "autoRefreshUserSettings": false,
+      "distanceUnit": "mi",
+      "brand": "{{ .Values.BRAND_NAME }}",
+      "sftp": {
+        "serverType": "none"
+      },
+      "holidayTheme": false
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ems-ui-keycloak-config
+data:
+  keycloak.json: |
+    {
+      "auth-server-url": "https://{{ .Values.emsui_subdomain }}.{{ .Values.endpoint }}/auth",
+      "realm": "DefaultTenant",
+      "resource": "ems-ui"
+    }

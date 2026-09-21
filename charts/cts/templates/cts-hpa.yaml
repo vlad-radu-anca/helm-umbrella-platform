@@ -1,0 +1,37 @@
+{{- if .Values.cts.smallcell_support.enabled }}
+{{- if .Values.cts.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "cts.fullname" . }}
+  labels:
+    app: {{ template "cts.name" . }}
+    chart: {{ template "cts.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cts
+  minReplicas: {{ .Values.cts.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.cts.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.cts.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.cts.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.cts.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.cts.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+{{- end }}

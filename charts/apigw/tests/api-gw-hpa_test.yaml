@@ -1,0 +1,145 @@
+suite: test hpa
+templates:
+  - api-gw-hpa.yaml
+tests:
+  - it: should not render when smallcell_support is disabled
+    set:
+      apigw.smallcell_support.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when autoscaling is disabled
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.autoscaling.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render HPA when both smallcell_support and autoscaling are enabled
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.autoscaling.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HorizontalPodAutoscaler
+      - isAPIVersion:
+          of: autoscaling/v2
+
+  - it: should have correct metadata
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-apigw-helm
+      - equal:
+          path: metadata.labels.app
+          value: apigw-helm
+      - equal:
+          path: metadata.labels.release
+          value: RELEASE-NAME
+
+  - it: should target correct deployment
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: spec.scaleTargetRef.apiVersion
+          value: apps/v1
+      - equal:
+          path: spec.scaleTargetRef.kind
+          value: Deployment
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: apigw
+
+  - it: should set replica limits correctly
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.autoscaling.enabled: true
+      apigw.autoscaling.minReplicas: 2
+      apigw.autoscaling.maxReplicas: 10
+    asserts:
+      - equal:
+          path: spec.minReplicas
+          value: 2
+      - equal:
+          path: spec.maxReplicas
+          value: 10
+
+  - it: should include CPU metrics when targetCPUUtilizationPercentage is set
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.autoscaling.enabled: true
+      apigw.autoscaling.minReplicas: 2
+      apigw.autoscaling.maxReplicas: 5
+      apigw.autoscaling.targetCPUUtilizationPercentage: null
+      apigw.autoscaling.targetMemoryUtilizationPercentage: 80
+    asserts:
+      - notExists:
+          path: spec.metrics[?(@.resource.name == 'cpu')]
+
+  - it: should include memory metrics when targetMemoryUtilizationPercentage is set
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.autoscaling.enabled: true
+      apigw.autoscaling.targetMemoryUtilizationPercentage: 80
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 80
+
+  - it: should include both CPU and memory metrics when both are set
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.autoscaling.enabled: true
+      apigw.autoscaling.targetCPUUtilizationPercentage: 70
+      apigw.autoscaling.targetMemoryUtilizationPercentage: 80
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 70
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 80
+
+  - it: should include default metrics when autoscaling is enabled
+    set:
+      apigw.smallcell_support.enabled: true
+      apigw.autoscaling.enabled: true
+      apigw.autoscaling.minReplicas: 2
+      apigw.autoscaling.maxReplicas: 5
+      # Default values will include CPU and memory targets
+    asserts:
+      - exists:
+          path: spec.metrics
+      - equal:
+          path: spec.metrics[0].type
+          value: Resource
+      - equal:
+          path: spec.metrics[0].resource.name
+          value: cpu

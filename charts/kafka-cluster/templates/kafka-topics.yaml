@@ -1,0 +1,25 @@
+{{- if .Values.kafkaTopic.enabled }}
+{{- $ns := .Values.kafkaTopic.namespace }}
+{{- $cluster := .Values.kafkaTopic.cluster }}
+{{- $prefix := .Values.kafkaTopic.prefix }}
+{{- $cfg := .Values.kafkaTopic.defaultConfig }}
+{{- range .Values.kafkaTopic.topics }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ $prefix }}-{{ .name }}
+  namespace: {{ $ns }}
+  labels:
+    strimzi.io/cluster: {{ $cluster }}
+spec:
+  partitions: {{ $cfg.partitions }}
+  replicas: {{ $cfg.replicas }}
+  config:
+    retention.ms: {{ $cfg.retentionMs }}
+    segment.bytes: {{ $cfg.segmentBytes }}
+    cleanup.policy: {{ $cfg.cleanupPolicy }}
+    max.message.bytes: {{ $cfg.maxMessageBytes }}
+    compression.type: {{ $cfg.compressionType }}
+{{- end }}
+{{- end }}

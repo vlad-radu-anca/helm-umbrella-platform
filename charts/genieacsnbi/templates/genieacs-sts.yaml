@@ -1,0 +1,95 @@
+{{- if .Values.cpeSupport.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: genieacsnbi
+  labels:
+    {{- include "genieacsnbi.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "genieacsnbi.selectorLabels" . | nindent 6 }}
+  serviceName: genieacsnbi
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "genieacsnbi.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+      initContainers:
+      - name: wait-for-dependency
+        image: {{ .Values.initContainers.busyboxImage.repo | default "busybox" }}:{{ .Values.initContainers.busyboxImage.tag | default "1.36.0" }}
+        command: ['sh', '-c', 'until nslookup mongo | grep "Name:"; do echo waiting for mongo; sleep 2; done;']
+      priorityClassName: ems-platform-medium-priority
+      containers:
+        - name: genieacsnbi
+          image: "{{ .Values.image }}:{{ .Values.tag }}"
+          args:
+            - /usr/bin/supervisord
+            - -c
+            - /opt/genieacs/supervisor/conf.d/supervisord.conf
+          envFrom:
+            - configMapRef:
+                name: genieacs-config-env
+            - configMapRef:
+                name: genieacs-nbi-config
+          ports:
+            - containerPort: 7557
+              name: nbi
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          startupProbe:
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
+            tcpSocket:
+              host:
+              port: 7557
+          readinessProbe:
+            tcpSocket:
+              port: 7557
+            failureThreshold: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 7557
+            failureThreshold: 8
+            periodSeconds: 10  
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      restartPolicy: Always
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+  # volumeClaimTemplates:
+  #   - metadata:
+  #       name: genieacs-nbi-persistent-storage
+  #     spec:
+  #       accessModes:
+  #         - ReadWriteOnce
+  #       resources:
+  #         requests:
+  #           storage: 3Gi
+# dummy volume for storing secrets
+{{- end }}

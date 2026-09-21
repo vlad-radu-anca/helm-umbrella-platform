@@ -1,0 +1,82 @@
+{{- if .Values.tus.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tus-kafka-proxy
+  labels:
+    {{- include "tus.labels" . | nindent 4 }}
+    app: tus-kafka-proxy
+spec:
+  replicas: {{ .Values.tus.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "tus.selectorLabels" . | nindent 6 }}
+      app: tus-kafka-proxy
+  template:
+    metadata:
+      labels:
+        {{- include "tus.selectorLabels" . | nindent 8 }}
+        app: tus-kafka-proxy
+    spec:
+      {{- with .Values.tus.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: tus-kafka-proxy-config
+        configMap:
+          name: tus-kafka-proxy-application-config
+      containers:
+      - name: tus-kafka-proxy
+        image: {{ .Values.tus.kafkaProxy.image }}:{{ .Values.tus.kafkaProxy.tag }}
+        imagePullPolicy: {{ .Values.tus.pullPolicy }}
+        ports:
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: tus-kafka-proxy-config
+          mountPath: /app/config
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 5
+        resources:
+          {{- toYaml .Values.tus.kafkaProxy.resources | nindent 10 }}
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.tus.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.tus.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.tus.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.tus.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tus.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

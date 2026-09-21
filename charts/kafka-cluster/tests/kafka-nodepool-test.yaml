@@ -1,0 +1,20 @@
+suite: Kafka NodePool Tests
+templates:
+  - templates/kafka-nodepool.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should create a KafkaNodePool with correct name and roles
+    asserts:
+      - equal:
+          path: kind
+          value: KafkaNodePool
+      - equal:
+          path: metadata.name
+          value: ems-platform-kafka-controller-broker
+      - equal:
+          path: spec.replicas
+          value: 3
+      - contains:
+          path: spec.roles
+          content: controller

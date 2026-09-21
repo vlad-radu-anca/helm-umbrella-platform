@@ -1,0 +1,119 @@
+{{- if .Values.k8sKafkaUpgrade.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-upgrade-job-config
+  labels:
+    app: k8s-kafka-upgrade
+    {{- include "upgrade-stack.labels" . | nindent 4 }}
+data:
+  application.yaml: |
+    app:
+      name: "kafka-upgrade-job"
+      devMode: {{ default true .Values.app.devMode }}
+
+    {{- $tc := .Values.temporalClient }}
+    temporalClient:
+      hostPort: {{ $tc.hostPort | quote }}
+      namespace: {{ $tc.namespace | quote }}
+      taskQueue: {{ $tc.taskQueue | quote }}
+      workflowID: {{ default "kafka-upgrade-workflow" $tc.workflowID | quote }}
+      workflowRunTimeout: {{ default "1h" $tc.workflowRunTimeout | quote }}
+      useWorkflow: {{ default true $tc.useWorkflow }}
+      tls:
+        enabled: {{- if and $tc $tc.tls }} {{ default false $tc.tls.enabled }} {{- else }} false {{- end }}
+        serverName: {{- if and $tc $tc.tls }} {{ default "temporal-frontend.temporal.svc.cluster.local" $tc.tls.serverName | quote }} {{- else }} "temporal-frontend.temporal.svc.cluster.local" {{- end }}
+        certificatePath: {{- if and $tc $tc.tls }} {{ default "/etc/temporal/certs/tls.crt" $tc.tls.certificatePath | quote }} {{- else }} "/etc/temporal/certs/tls.crt" {{- end }}
+        keyPath: {{- if and $tc $tc.tls }} {{ default "/etc/temporal/certs/tls.key" $tc.tls.keyPath | quote }} {{- else }} "/etc/temporal/certs/tls.key" {{- end }}
+        caPath: {{- if and $tc $tc.tls }} {{ default "/etc/temporal/certs/ca.crt" $tc.tls.caPath | quote }} {{- else }} "/etc/temporal/certs/ca.crt" {{- end }}
+      auth:
+        enabled: {{- if and $tc $tc.auth }} {{ default false $tc.auth.enabled }} {{- else }} false {{- end }}
+        type: {{- if and $tc $tc.auth }} {{ default "jwt" $tc.auth.type | quote }} {{- else }} "jwt" {{- end }}
+        tokenPath: {{- if and $tc $tc.auth }} {{ default "/etc/temporal/auth/token" $tc.auth.tokenPath | quote }} {{- else }} "/etc/temporal/auth/token" {{- end }}
+
+    logger:
+      logLevel: "DEBUG"
+      callerLevel: "DEBUG"
+      stackTraceLevel: "DEBUG"
+      charLimit: 1024
+      formatJson: true
+
+    secretStorage:
+      prefixBlue: {{ .Values.aws.clusters.blue.prefix | quote }}
+      suffixBlue: {{ .Values.aws.clusters.blue.suffix | quote }}
+      prefixGreen: {{ .Values.aws.clusters.green.prefix | quote }}
+      suffixGreen: {{ .Values.aws.clusters.green.suffix | quote }}
+
+    kafka:
+      maxRetries: 12
+      retryDelay: 10
+      kafkaBootstrapService: {{ .Values.kafkaClient.bootstrapServers | quote }}
+      kafkaPort: {{ .Values.kafkaClient.port | quote }}
+      mm2SourceClusterAuthType: {{ .Values.kafkaClient.mm2.sourceCluster.security.protocol | quote }}
+      mm2SourceClusterAuthSecret: {{ .Values.kafkaClient.mm2.sourceCluster.AuthSecret | quote }}
+      mm2SourceClusterBootstrapServers: {{ .Values.kafkaClient.mm2.sourceCluster.BootstrapServers | quote }}
+
+    clusters:
+      access_key: {{ .Values.aws.accessKey | quote }}
+      secret_access_key: {{ .Values.aws.secretAccessKey | quote }}
+      blue:
+        eksCluster: {{ .Values.aws.clusters.blue.eksCluster | quote }}
+        ems-platformNamespace: "ems-platform"
+        kafkaNamespace: "kafka"
+        region: {{ .Values.aws.clusters.blue.region | quote }}
+      green:
+        eksCluster: {{ .Values.aws.clusters.green.eksCluster | quote }}
+        ems-platformNamespace: "ems-platform"
+        kafkaNamespace: "kafka"
+        region: {{ .Values.aws.clusters.green.region | quote }}
+
+    helmReleases:
+      blue:
+        ems-platformReleaseName: {{ (index .Values.helmReleases.blue "emsPlatformReleaseName") | quote }}
+        ems-platformChartName: {{ (index .Values.helmReleases.blue "emsPlatformChartName") | quote }}
+        ems-platformChartRepo: {{ (index .Values.helmReleases.blue "emsPlatformChartRepo") | quote }}
+        kafkaReleaseName: {{ .Values.helmReleases.blue.kafkaReleaseName | quote }}
+        kafkaChartName: {{ .Values.helmReleases.blue.kafkaChartName | quote }}
+        kafkaChartRepo: {{ .Values.helmReleases.blue.kafkaChartRepo | quote }}
+        mm2ReleaseName: {{ .Values.helmReleases.blue.mm2ReleaseName | quote }}
+        mm2ChartName: {{ .Values.helmReleases.blue.mm2ChartName | quote }}
+        mm2ChartRepo: {{ .Values.helmReleases.blue.mm2ChartRepo | quote }}
+        ngfDevicesReleaseName: {{ .Values.helmReleases.blue.ngfDevicesReleaseName | quote }}
+        ngfDevicesChartName: {{ .Values.helmReleases.blue.ngfDevicesChartName | quote }}
+        ngfDevicesChartRepo: {{ .Values.helmReleases.blue.ngfDevicesChartRepo | quote }}
+      green:
+        ems-platformReleaseName: {{ (index .Values.helmReleases.green "emsPlatformReleaseName") | quote }}
+        ems-platformChartName: {{ (index .Values.helmReleases.green "emsPlatformChartName") | quote }}
+        ems-platformChartRepo: {{ (index .Values.helmReleases.green "emsPlatformChartRepo") | quote }}
+        kafkaReleaseName: {{ .Values.helmReleases.green.kafkaReleaseName | quote }}
+        kafkaChartName: {{ .Values.helmReleases.green.kafkaChartName | quote }}
+        kafkaChartRepo: {{ .Values.helmReleases.green.kafkaChartRepo | quote }}
+        mm2ReleaseName: {{ .Values.helmReleases.green.mm2ReleaseName | quote }}
+        mm2ChartName: {{ .Values.helmReleases.green.mm2ChartName | quote }}
+        mm2ChartRepo: {{ .Values.helmReleases.green.mm2ChartRepo | quote }}
+        ngfDevicesReleaseName: {{ .Values.helmReleases.green.ngfDevicesReleaseName | quote }}
+        ngfDevicesChartName: {{ .Values.helmReleases.green.ngfDevicesChartName | quote }}
+        ngfDevicesChartRepo: {{ .Values.helmReleases.green.ngfDevicesChartRepo | quote }}
+
+    secrets:
+      kafkaCACert: {{ .Values.kafkaClient.secrets.kafkaCACert | quote }}
+      kafkaClusterExternalUser: {{ .Values.kafkaClient.secrets.kafkaClusterExternalUser | quote }}
+
+    producerPaths:
+      sparkReplicaCountClustering: "global.spark.replicaCountClustering"
+      eventcollectorReplicaCountClustering: "global.eventcollector.replicaCountClustering"
+      tocReplicaCount: "global.toc.replicaCount"
+      nginxGatewayReplicaCount: "nginxGateway.replicaCount"
+
+    elasticClient:
+      addresses: {{ .Values.loggerElasticClient.addresses | quote }}
+      connectionTimeout: {{ .Values.loggerElasticClient.connectionTimeout }}
+      idxName: {{ .Values.loggerElasticClient.idxName | quote }}
+
+    emsUIAppConfigMap:
+      name: "ems-ui-app-config"
+      key: "app.json"
+      bannerKey: "emsUpgradeMessage"
+      bannerValue: "An application upgrade is in progress. Please refrain from performing configuration operations."
+{{- end }}

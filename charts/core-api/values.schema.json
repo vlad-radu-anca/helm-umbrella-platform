@@ -1,0 +1,681 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Diesel Helm Chart Values Schema",
+  "description": "Schema for validating values.yaml configuration for the Diesel Helm chart",
+  "required": [
+    "platform",
+    "coreApi"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "global": {
+      "type": "object",
+      "description": "Global values passed from the umbrella chart",
+      "additionalProperties": true
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "aws",
+        "onprem"
+      ],
+      "description": "Deployment platform - determines storage and secrets configuration"
+    },
+    "loadBalancerIP": {
+      "type": "string",
+      "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
+      "description": "Load balancer IP address in IPv4 format"
+    },
+    "endpoint": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*$",
+      "description": "Application endpoint hostname or FQDN"
+    },
+    "dev_mode": {
+      "type": "boolean",
+      "description": "Enable development mode features"
+    },
+    "certificate": {
+      "type": "object",
+      "description": "TLS certificate configuration for cert-manager",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "description": "Certificate resource name"
+        },
+        "isCA": {
+          "type": "boolean",
+          "description": "Whether this certificate is a Certificate Authority"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|\u00b5s|ms|s|m|h)$",
+          "description": "Certificate validity duration (e.g., 8760h)"
+        },
+        "renewBefore": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|\u00b5s|ms|s|m|h)$",
+          "description": "Time before expiry to renew certificate (e.g., 168h)"
+        },
+        "dnsNames": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*$"
+          },
+          "description": "List of DNS names for the certificate"
+        },
+        "subject": {
+          "type": "object",
+          "properties": {
+            "organizations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Organization names for the certificate subject"
+            }
+          }
+        },
+        "issuerRef": {
+          "type": "object",
+          "required": [
+            "group",
+            "kind",
+            "name"
+          ],
+          "properties": {
+            "group": {
+              "type": "string",
+              "description": "API group of the issuer"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "Issuer",
+                "ClusterIssuer"
+              ],
+              "description": "Kind of the issuer resource"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name of the issuer resource"
+            }
+          }
+        },
+        "secretName": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "description": "Name of the secret to store the certificate"
+        },
+        "commonName": {
+          "type": "string",
+          "description": "Common name for the certificate"
+        },
+        "privateKey": {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "enum": [
+                "RSA",
+                "ECDSA",
+                "Ed25519"
+              ],
+              "description": "Private key algorithm"
+            },
+            "encoding": {
+              "type": "string",
+              "enum": [
+                "PKCS1",
+                "PKCS8"
+              ],
+              "description": "Private key encoding format"
+            },
+            "size": {
+              "type": "integer",
+              "enum": [
+                1024,
+                2048,
+                4096,
+                8192
+              ],
+              "description": "Private key size in bits"
+            }
+          }
+        }
+      }
+    },
+    "coreApi": {
+      "type": "object",
+      "required": [
+        "image",
+        "tag"
+      ],
+      "description": "Diesel application configuration",
+      "properties": {
+        "hpa": {
+          "type": "object",
+          "description": "Horizontal Pod Autoscaler configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable HPA for core-api deployment"
+            },
+            "maxReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Maximum number of replicas"
+            },
+            "minReplicas": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Minimum number of replicas"
+            },
+            "averageCpuUtilization": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Target average CPU utilization percentage"
+            },
+            "averageMemoryUtilization": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Target average memory utilization percentage"
+            }
+          }
+        },
+        "data": {
+          "type": "object",
+          "description": "Application-specific data configuration",
+          "properties": {
+            "dev_mode": {
+              "type": "boolean",
+              "description": "Enable development mode"
+            },
+            "diesel_java_options": {
+              "type": "string",
+              "description": "JVM options for the Diesel application"
+            },
+            "dieselWikiHeaderXFrameOptionsValue": {
+              "type": "string",
+              "enum": [
+                "DENY",
+                "SAMEORIGIN",
+                "ALLOW-FROM"
+              ],
+              "description": "X-Frame-Options header value"
+            },
+            "dieselWikiHeader": {
+              "type": "string",
+              "description": "Wiki header configuration"
+            },
+            "cpe_support": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable CPE support"
+                }
+              }
+            },
+            "enb_support": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable eNB support"
+                }
+              }
+            },
+            "diesel_wiki_header": {
+              "type": "string",
+              "description": "Diesel wiki header configuration"
+            },
+            "sftp_ip": {
+              "type": "string",
+              "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
+              "description": "SFTP server IP address"
+            },
+            "diesel_secret": {
+              "type": "string",
+              "description": "Diesel application secret key"
+            },
+            "ems_client_secret": {
+              "type": "string",
+              "description": "EMS client secret"
+            },
+            "TOCUrlBase": {
+              "type": "string",
+              "pattern": "^https?://",
+              "description": "TOC service base URL"
+            },
+            "elastic_auth": {
+              "type": "string",
+              "description": "Elasticsearch authentication string"
+            },
+            "elastic_password": {
+              "type": "string",
+              "description": "Elasticsearch password"
+            },
+            "elastic_username": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Elasticsearch username"
+            },
+            "elasticsearch_password": {
+              "type": "string",
+              "description": "Elasticsearch password (alternative field)"
+            },
+            "elasticsearch_username": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Elasticsearch username (alternative field)"
+            }
+          }
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*(/[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*)*$",
+          "description": "Docker image repository and name"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._-]+$",
+          "description": "Docker image tag"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "Never",
+            "IfNotPresent"
+          ],
+          "description": "Image pull policy"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Number of replicas for the deployment"
+        },
+        "imagePullSecrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              }
+            },
+            "required": [
+              "name"
+            ]
+          },
+          "description": "Image pull secrets for private registries"
+        },
+        "nameOverride": {
+          "type": "string",
+          "description": "Override the name of the chart"
+        },
+        "fullnameOverride": {
+          "type": "string",
+          "description": "Override the full name of the chart"
+        },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations to add to pods"
+        },
+        "internal_cluster_hostname": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "description": "Internal cluster hostname for service discovery"
+        },
+        "service": {
+          "type": "object",
+          "description": "Service configuration",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer",
+                "ExternalName"
+              ],
+              "description": "Kubernetes service type"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "description": "Service port number"
+            },
+            "akka_cluster_port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "description": "Akka cluster port number"
+            },
+            "akka_management_port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "description": "Akka management port number"
+            }
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "description": "Ingress configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable ingress"
+            },
+            "className": {
+              "type": "string",
+              "description": "Ingress class name"
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Ingress annotations"
+            },
+            "tls": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "secretName": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                  },
+                  "hosts": {
+                    "oneOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "secretName",
+                  "hosts"
+                ]
+              },
+              "description": "TLS configuration for ingress"
+            },
+            "resources": {
+              "type": "object",
+              "description": "Resource limits and requests",
+              "properties": {
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "type": "string",
+                      "pattern": "^[0-9]+(m|[0-9]*\\.?[0-9]+)?$",
+                      "description": "CPU limit (e.g., 2000m, 2)"
+                    },
+                    "memory": {
+                      "type": "string",
+                      "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$",
+                      "description": "Memory limit (e.g., 3150Mi, 2Gi)"
+                    }
+                  }
+                },
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "cpu": {
+                      "type": "string",
+                      "pattern": "^[0-9]+(m|[0-9]*\\.?[0-9]+)?$",
+                      "description": "CPU request (e.g., 500m, 0.5)"
+                    },
+                    "memory": {
+                      "type": "string",
+                      "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$",
+                      "description": "Memory request (e.g., 2750Mi, 2Gi)"
+                    }
+                  }
+                }
+              }
+            },
+            "hpa": {
+              "type": "object",
+              "description": "Horizontal Pod Autoscaler configuration for ingress",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "maxReplicas": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                "minReplicas": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10
+                },
+                "averageCpuUtilization": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              }
+            },
+            "nodeSelector": {
+              "type": "object",
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "tolerations": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "Pod tolerations"
+            },
+            "affinity": {
+              "type": "object",
+              "description": "Pod affinity and anti-affinity rules"
+            }
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secret names for different services",
+          "properties": {
+            "internal_keycloak_core_api_client": {
+              "type": "string",
+              "description": "Internal Keycloak Diesel client secret name"
+            },
+            "external_keycloak_admin_client": {
+              "type": "string",
+              "description": "External Keycloak admin client secret name"
+            },
+            "internal_elastic_client": {
+              "type": "string",
+              "description": "Internal Elasticsearch client secret name"
+            },
+            "internal_pg_client": {
+              "type": "string",
+              "description": "Internal PostgreSQL client secret name"
+            }
+          }
+        }
+      }
+    },
+    "ConnectionUrls": {
+      "type": "object",
+      "description": "Service connection URLs",
+      "properties": {
+        "keycloak": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^https?://",
+              "description": "Keycloak service URL"
+            },
+            {
+              "type": "object",
+              "description": "Keycloak service configuration object"
+            }
+          ]
+        },
+        "elastic": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Elasticsearch service URL"
+        },
+        "spark": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Spark service URL"
+        },
+        "coreApi": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Diesel service URL"
+        },
+        "certsmgmt": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Certificate management service URL"
+        },
+        "pgDb": {
+          "type": "object",
+          "description": "PostgreSQL database connection details",
+          "properties": {
+            "host": {
+              "type": "string",
+              "description": "Database host"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "description": "Database port"
+            },
+            "user": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Database username"
+            }
+          }
+        }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "description": "Service account configuration",
+      "properties": {
+        "create": {
+          "type": "boolean",
+          "description": "Create a service account"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "description": "Service account name"
+        }
+      }
+    },
+    "rbac": {
+      "type": "object",
+      "description": "RBAC configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable RBAC resources"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "description": "Service account name for RBAC"
+        },
+        "roleName": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "description": "Role name"
+        },
+        "roleBindingName": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "description": "Role binding name"
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "description": "Namespace for RBAC resources"
+        }
+      }
+    },
+    "initContainers": {
+      "type": "object",
+      "description": "Init container images configuration",
+      "properties": {
+        "curlImage": {
+          "type": "object",
+          "properties": {
+            "repo": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*(/[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*)*$",
+              "description": "Curl image repository"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "description": "Curl image tag"
+            }
+          }
+        },
+        "busyboxImage": {
+          "type": "object",
+          "properties": {
+            "repo": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*(/[a-z0-9]+(([._]|__|[-]*)[a-z0-9]+)*)*$",
+              "description": "Busybox image repository"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "description": "Busybox image tag"
+            }
+          }
+        }
+      }
+    }
+  }
+}

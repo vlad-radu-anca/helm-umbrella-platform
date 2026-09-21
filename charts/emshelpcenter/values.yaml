@@ -1,0 +1,72 @@
+platform: "onprem" #or aws
+
+emshelpcenter:
+  serviceAccountName: ems-service-account
+  enabled: true
+  image: vlad-radu-anca/help-center
+  tag: 5.0.latest
+  pullPolicy: Always
+  replicaCount: 1
+  local: # local path where to markdowns are stored
+    volumeMountPaths: /usr/share/nginx/html
+  storage:
+    size: 5Gi
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/enable-cors: "false"
+    hosts:
+      - host: helpcenter.ems.example.local
+        paths:
+        - path: /
+          pathType: ImplementationSpecific
+   # tls:
+   #   - secretName: help-center-tls-secret
+   #     hosts:
+   #       - helpcenter.{{ $endpoint }}
+  imagePullSecrets: [name: "regcred"]
+  # Registry pull credentials rendered into the "regcred" secret on aws; supply real values via --set or a private values file
+  registryCredentials:
+    registry: https://index.docker.io/v1/
+    username: changeme
+    password: changeme
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  loadBalancerIP: "0.0.0.0"
+  service:
+    type: ClusterIP
+    port: 9094
+  resources:
+    limits:
+      cpu: 200m
+      memory: 350Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 95
+    targetMemoryUtilizationPercentage: 95
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-small
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+  emsui_subdomain: "emsui"
+  endpoint: "devems122.example.local"
+  dev_mode: false
+  BRAND_NAME: "ems-platform"
+  secrets:
+    internal_gh_help_center_repo_client: "ems-platform_internal_gh_help_center_repo_client_xlv"
+
+endpoint: ems.example.local
+securityContext:
+  fsGroup: 10000
+  runAsUser: 10000
+  runAsGroup: 10000

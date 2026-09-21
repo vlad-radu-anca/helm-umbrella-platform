@@ -1,0 +1,20 @@
+suite: Kafka Topic PostHook Job
+templates:
+  - templates/kafka-helm-posthook.yaml
+values:
+  - ../values.yaml
+tests:
+  - it: should create a Job to wait for the topic operator
+    asserts:
+      - equal:
+          path: kind
+          value: Job
+      - equal:
+          path: metadata.name
+          value: wait-for-topic-operator
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: check-topic-operator
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: OnFailure

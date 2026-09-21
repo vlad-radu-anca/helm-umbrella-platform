@@ -1,0 +1,102 @@
+{{- if .Values.tus.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tus
+  labels:
+    {{- include "tus.labels" . | nindent 4 }}
+    component: tus-server
+spec:
+  replicas: {{ .Values.tus.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "tus.selectorLabels" . | nindent 6 }}
+      component: tus-server
+  template:
+    metadata:
+      labels:
+        {{- include "tus.selectorLabels" . | nindent 8 }}
+        component: tus-server
+    spec:
+      {{- with .Values.tus.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+      initContainers:
+      - name: fix-permissions
+        image: {{ .Values.initContainers.busyboxImage.repo | default "busybox" }}:{{ .Values.initContainers.busyboxImage.tag | default "1.35" }}
+        command: ['sh', '-c', 'chmod 777 /var/lib/tusd-data && chown -R 1000:1000 /var/lib/tusd-data']
+        volumeMounts:
+        - name: upload-storage
+          mountPath: /var/lib/tusd-data
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+      - name: tusd
+        image: {{ .Values.tus.image }}:{{ .Values.tus.tag }}
+        imagePullPolicy: {{ .Values.tus.pullPolicy }}
+        ports:
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: upload-storage
+          mountPath: /var/lib/tusd-data
+        args:
+        - "-upload-dir=/var/lib/tusd-data"
+        - "-base-path=/tus"
+        - "-max-size=3221225472" # 3GiB
+        - "-verbose"
+        - "-expose-metrics"
+        - "-metrics-path=/metrics"
+        - "-behind-proxy"
+        - "-cors-allow-origin=.*"
+        - "-cors-allow-methods=POST,GET,HEAD,PATCH,DELETE,OPTIONS"
+        - "-cors-allow-headers=Authorization,Content-Type,Upload-Length,Upload-Offset,Tus-Resumable,Upload-Metadata,Upload-Defer-Length,Upload-Concat"
+        - "-hooks-http=http://tus-kafka-proxy:8080/webhook"
+        - "-hooks-http-forward-headers=Authorization,Content-Type"
+        - "-hooks-enabled-events=pre-create,post-finish,post-terminate"
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.tus.resources | nindent 10 }}
+      volumes:
+      - name: upload-storage
+        persistentVolumeClaim:
+          claimName: tus-pvc
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.tus.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.tus.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.tus.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.tus.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tus.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

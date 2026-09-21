@@ -1,0 +1,131 @@
+platform: onprem #or aws
+
+sftp:
+  image:
+    repository: example/sftp-server
+    tag: "1.0"
+    pullPolicy: IfNotPresent
+
+  nameOverride: ""
+  fullnameOverride: ""
+
+  service:
+    enabled: true
+    type: LoadBalancer
+    port: 22
+    external_ingress_IP: false
+    internal_ingress_IP: false    
+
+  sftpConfig:
+    users:
+      - username: ems-platform-ems-sftp-ro
+        password: "changeme"
+        encrypted: false
+        uid: "1000"
+        gid: "100"
+        dir: ""
+        authorizedKeys: {}
+        mountPath: "/home/ems-platform-ems-sftp-ro"
+        #subPath: "test" # mounts to a subfolder "inbox" on a persistent volume. This user will only be able to access "inbox subfolder"
+      - username: ems-platform-ems-sftp-admin
+        password: "changeme"
+        encrypted: false
+        uid: "1001"
+        gid: "100"
+        dir: ""
+        authorizedKeys: {}
+        mountPath: "/home/ems-platform-ems-sftp-admin"
+      - username: ems-platform-ems-sftp-rw
+        password: "changeme"
+        encrypted: false
+        uid: "1002"
+        gid: "100"
+        dir: ""
+        authorizedKeys: {}
+        mountPath: "/home/ems-platform-ems-sftp-rw"
+    hostKeys: {}
+      # secret: name-of-existing-secret
+      # keys:
+      # - ssh_host_rsa_key
+      # - ssh_host_ed25519_key
+
+  init:
+    enabled: true
+    script: |
+      #!/bin/bash
+      cd /home/ems-platform-ems-sftp-ro
+      mkdir download
+      mkdir config-eNB
+      mkdir upload
+      mkdir images
+      chown -R ems-platform-ems-sftp-ro:users download
+      chown -R ems-platform-ems-sftp-ro:users images
+      chown -R ems-platform-ems-sftp-ro:users config-eNB
+      chown -R ems-platform-ems-sftp-ro:users upload
+      cd /home/ems-platform-ems-sftp-rw
+      mkdir download
+      mkdir config-eNB
+      mkdir upload
+      mkdir images
+      chown -R ems-platform-ems-sftp-rw:users download
+      chown -R ems-platform-ems-sftp-rw:users images
+      chown -R ems-platform-ems-sftp-rw:users config-eNB
+      chown -R ems-platform-ems-sftp-rw:users upload
+
+  debug:
+    enabled: false
+    image:
+       repository: quay.io/travelping/nettools
+       tag: v1.10.0
+       pullPolicy: IfNotPresent
+
+  persistentVolume:
+    enabled: true
+    annotations: {}
+    accessModes:
+      - ReadWriteOnce
+    existingClaim: ""
+    size: 30Gi
+    #storageClass: ""
+
+  vxlanController:
+    enabled: false
+    annotationKey: vxlan.openvnf.org/networks
+    metadataKey: vxlan.openvnf.org
+    image:
+      repository: openvnf/kube-vxlan-controller-agent
+      tag: 2.1.0
+      pullPolicy: IfNotPresent
+    network: "vxeth0"
+    ip: {}
+    route: {}
+    resources:
+      limits:
+        cpu: 50m
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+  resources:
+    sftp:
+      limits:
+        #cpu: 5000m
+        memory: 300Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    debug:
+      limits:
+        cpu: 100m
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 32Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+  

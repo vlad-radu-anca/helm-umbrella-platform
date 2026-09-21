@@ -1,0 +1,162 @@
+platform: onprem  # or aws
+
+endpoint: ems.example.local
+
+elasticJob:
+  ConnectionUrls:
+    elastic: http://elastic:9200
+  namespace: ems-platform
+  image: vlad-radu-anca/elastic-job
+  tag: 5.0.latest
+  pullPolicy: Always
+  replicaCount: 0
+  shardCount: 1
+  internal_elastic_admin_client: "ems-platform_internal_elastic_admin_client_ti6"
+
+elasticsearch:
+  priorityClass:
+    create: true
+    name: "ems-platform-high-priority"
+    value: 100000
+    globalDefault: false
+    description: "High priority for elasticsearch"
+  fsid: "fs-svsvdsvdsvdsv"
+  fsaccesspoint: "fsap-fsdvsdfvsdds"
+  image: docker.elastic.co/elasticsearch/elasticsearch
+  tag: 7.17.29
+  pullPolicy: Always
+  elastic_java_options: '-Xmx3g -Xms3g'
+  replicaCount: 3
+ # imagePullSecrets: []
+  persistent_size: 100Gi
+  retention:
+    Job: false
+    realtime: 14d
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  service:
+    http:
+      port: 9200
+      protocol: TCP
+      targetPort: 9200
+    transport:
+      port: 9300
+      protocol: TCP
+      targetPort: 9300
+    type: ClusterIP
+  ingress:
+    enabled: true
+    className: "internal-nginx"
+    annotations: {}
+      # Optional: override as needed
+      # cert-manager.io/cluster-issuer: selfsigned-cluster-issuer
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+
+    hosts:
+      - host: elastic.{{ .Values.endpoint }}
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+
+    # TLS block is only used when platform is "onprem"
+    tls:
+      - secretName: elastic-tls-secret
+        hosts:
+          - elastic.{{ .Values.endpoint }}
+  resources:
+    limits:
+      cpu: 3500m
+      memory: 4150Mi
+    requests:
+      cpu: 750m
+      memory: 3750Mi
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform
+    onprem: {}
+    default: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - elastic
+          topologyKey: kubernetes.io/hostname
+        weight: 1
+  initContainers:
+    curlImage:
+      repo: curlimages/curl
+      tag: 8.12.1
+  startupProbe:
+    tcpSocket:
+    port: 9200
+    periodSeconds: 5
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 30
+  readinessProbe:
+    tcpSocket:
+      port: 9200
+    failureThreshold: 5
+    periodSeconds: 10
+  livenessProbe:
+    tcpSocket:
+      port: 9200
+    failureThreshold: 8
+    periodSeconds: 10
+
+certificates:
+  ca:
+    name: issuer-secret
+    isCA: true
+    duration: "8760h"
+    renewBefore: "168h"
+    dnsNames:
+      - elastic.ems.example.local
+      - elastic
+      - elastic-headless
+      - elastic.svc.cluster.local
+    issuerRef:
+      group: cert-manager.io
+      kind: ClusterIssuer
+      name: selfsigned-cluster-issuer
+    secretName: issuer-secret
+    commonName: my-selfsigned-ca
+    privateKey:
+      algorithm: ECDSA
+      size: 256
+  name: elastic-tls-secret
+  duration: 8760h
+  renewBefore: "168h"
+  secretName: elastic-tls-secret
+  isCA: false
+  dnsNames:
+    - elastic.ems.example.local
+    - elastic-headless
+    - elastic
+    - elastic.svc.cluster.local
+  subject:
+    organizations:
+      - ems-platform
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  issuerRef:
+    name: ca-issuer
+    kind: Issuer
+
+securityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsGroup: 1000
+
+sysctlSettings:
+  vmMaxMapCount: 262144

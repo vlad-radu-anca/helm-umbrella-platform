@@ -1,0 +1,124 @@
+{{- if .Values.enabled -}}
+{{- if .Values.enbSupport.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: snmpproxy
+  labels:
+    {{- include "snmpproxy.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "snmpproxy.selectorLabels" . | nindent 6 }}
+  serviceName: snmpproxy
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "snmpproxy.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-dependency
+          image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+          command: ["/bin/sh", "-c"]
+          args:
+            [
+                "while [[ $(curl -sw '%{http_code}' http://core-api:9000/diesel/rest/v1/ems/local/started -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for core-api to be ready...'; done; echo 'core-api is ready'",
+            ]
+      priorityClassName: ems-platform-medium-priority
+      containers:
+        - args:
+            - /bin/sh
+            - -c
+            - /bin/bash -c "/usr/local/ems/snmpproxy/bin/run.sh"
+          name: snmpproxy
+          image: "{{ .Values.image }}:{{ .Values.tag }}"
+          ports:
+            - containerPort: {{ .Values.snmpproxy_trap_port }}
+              name: snmp
+            - containerPort: {{ .Values.snmpproxy_notification_port }}
+              name: snmp-1
+            - containerPort: {{ .Values.snmpproxy_agent_port }}
+              name: snmp-2
+              protocol: UDP
+            - containerPort: 9095
+              name: snmp-3
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          startupProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
+            httpGet:
+              host:
+              scheme: HTTP
+              path: /status
+              port: 16162
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: 16162
+            failureThreshold: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 16162
+            failureThreshold: 5
+            periodSeconds: 10         
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /usr/local/ems/snmpproxy/config/log4j.properties
+              name: snmpproxy-properties
+              subPath: log4j.snmpproxy.properties
+            - mountPath: /usr/local/ems/snmpproxy/config/ems-config.json
+              name: ems-config
+              subPath: ems-config.json
+      restartPolicy: Always
+      volumes:
+        - name: snmpproxy-properties
+          configMap:
+            name: snmpproxy-properties
+            defaultMode: 0644
+        - name: ems-config
+          configMap:
+            name: ems-config
+            defaultMode: 0644
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+  # volumeClaimTemplates:
+  #   - metadata:
+  #       name: snmpproxy-persistent-storage
+  #     spec:
+  #       accessModes:
+  #         - ReadWriteOnce
+  #       resources:
+  #         requests:
+  #           storage: 3Gi
+{{- end }}
+{{- end }}

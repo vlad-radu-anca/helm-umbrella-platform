@@ -1,0 +1,39 @@
+{{- if .Values.smallcell_support.enabled }}
+---
+apiVersion: v1
+data:
+  application.yaml: |
+    settings:
+      loadFileIntoPostgres: true
+      loadRealm: true
+      realmRepresentationFileName: "realm-representation.json"
+      rolePermissionFileName: "role-permissions.json"
+      devMode: {{ .Values.dev_mode }}
+      useLocalFrontendUrl: false
+      globalEndpoint: "{{ .Values.endpoint }}"
+      globalEmsUiSubdomain: "{{ .Values.emsui_subdomain }}"
+      brandName: "{{ .Values.BRAND_NAME }}"
+      permissionVersion: "5.0"
+
+    rbacDB:
+      host: "{{ .Values.ConnectionUrls.pgDb.host }}"
+      port: {{ .Values.ConnectionUrls.pgDb.port }}
+      connectTimeout: 30
+
+    keycloak:
+      url: "{{ .Values.ConnectionUrls.keycloak }}/"
+      realmId: "DefaultTenant"
+      adminRealm: "master"
+
+    emailConfig:
+      senderEmail: {{ .Values.toc.smtp.senderEmail }}
+      smtp:
+        server: {{ .Values.toc.smtp.server }}
+        port: {{ .Values.toc.smtp.port }}
+        auth: {{ .Values.toc.smtp.auth }}
+        ssl: {{ .Values.toc.smtp.ssl }}
+        startTls: {{ .Values.toc.smtp.startTls }}
+kind: ConfigMap
+metadata:
+  name: init-client-application-config
+{{- end }}

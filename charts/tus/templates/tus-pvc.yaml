@@ -1,0 +1,16 @@
+{{- if .Values.tus.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tus-pvc
+  labels:
+    {{- include "tus.labels" . | nindent 4 }}
+    component: tus-server
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.tus.storage.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.tus.storage.size }}
+{{- end }}

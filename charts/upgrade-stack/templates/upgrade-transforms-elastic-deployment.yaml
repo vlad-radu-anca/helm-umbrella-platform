@@ -1,0 +1,83 @@
+{{- if .Values.upgradeTransformsElastic.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upgrade-transforms-elastic
+  labels:
+    app: upgrade-transforms-elastic
+    {{- include "upgrade-stack.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.upgradeTransformsElastic.replicaCount }}
+  selector:
+    matchLabels:
+      app: upgrade-transforms-elastic
+  template:
+    metadata:
+      labels:
+        app: upgrade-transforms-elastic
+    spec:
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      {{- with .Values.imageDefaults.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: upgrade-transforms-elastic
+          image: {{ .Values.upgradeTransformsElastic.image }}:{{ .Values.upgradeTransformsElastic.tag }}
+          imagePullPolicy: {{ .Values.imageDefaults.pullPolicy }}
+          env:
+            - name: TEMPORAL_HOST_PORT
+              value: {{ .Values.temporalClient.hostPort | quote }}
+            - name: TEMPORAL_NAMESPACE
+              value: {{ .Values.temporalClient.namespace | quote }}
+            - name: TEMPORAL_TASK_QUEUE
+              value: {{ .Values.temporalClient.taskQueue | quote }}
+            - name: UPGRADE_TRANSFORMS_ELASTICCLIENT_SOURCE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}elastic-admin-client{{ else }}internal-elastic-admin-client{{ end }}
+                  key: {{ .Values.envFromSecrets.elastic.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_ELASTICCLIENT_SOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}elastic-admin-client{{ else }}internal-elastic-admin-client{{ end }}
+                  key: {{ .Values.envFromSecrets.elastic.passwordKey }}
+            - name: UPGRADE_TRANSFORMS_ELASTICCLIENT_TARGET_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}elastic-admin-client{{ else }}internal-elastic-admin-client{{ end }}
+                  key: {{ .Values.envFromSecrets.elastic.usernameKey }}
+            - name: UPGRADE_TRANSFORMS_ELASTICCLIENT_TARGET_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq (include "platform" .) "aws" }}elastic-admin-client{{ else }}internal-elastic-admin-client{{ end }}
+                  key: {{ .Values.envFromSecrets.elastic.passwordKey }}
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+            {{- if .Values.mounts.elastic }}
+            - name: elastic-secrets
+              mountPath: /opt/ems-platform/config/elastic
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.upgradeTransformsElastic.resources | nindent 12 }}
+      volumes:
+        - name: app-config
+          configMap:
+            name: upgrade-stack-config
+        {{- if .Values.mounts.elastic }}
+        - name: elastic-secrets
+          {{- if eq (include "platform" .) "aws" }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: internal-elastic-admin-client
+          {{- else }}
+          secret:
+            secretName: internal-elastic-admin-client
+          {{- end }}
+        {{- end }}
+{{- end }}

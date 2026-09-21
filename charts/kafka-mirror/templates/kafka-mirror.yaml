@@ -1,0 +1,98 @@
+{{- with .Values.kafkaMirror }}
+{{- if .enabled }}
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaMirrorMaker2
+metadata:
+  name: {{ .name }}
+  labels:
+    app: {{ .name }}
+spec:
+  replicas: {{ .replicaCount }}
+  version: {{ .kafkaVersion }}
+  connectCluster: {{ .targetCluster.name | quote }}
+  clusters:
+  - alias: {{ .sourceCluster.name | quote }}
+    bootstrapServers:  {{ .sourceCluster.bootstrapServers }}
+    {{- with .sourceCluster.trustSecret }}
+    tls: 
+      trustedCertificates:
+      - secretName: {{ . }}
+        certificate: ca.crt
+    {{- end }}
+    {{- with .sourceCluster.auth }}
+    authentication: 
+      type: {{ .type }}
+      {{- if eq .type "tls" }}
+      certificateAndKey:
+        certificate: user.crt
+        key: user.key
+        secretName: {{ .secret }}
+      {{- else if eq .type "scram-sha-512" }}
+      username: {{ .username | default .secret }}
+      passwordSecret:
+        secretName: {{ .secret }}
+        password: {{ .passwordField | default "password" }}
+      {{- end }}
+    {{- end }}
+    {{- with .sourceCluster.config }}
+    config:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  - alias: {{ .targetCluster.name | quote }}
+    bootstrapServers: {{ .targetCluster.bootstrapServers }}
+    {{- with .targetCluster.trustSecret }}
+    tls: 
+      trustedCertificates:
+      - secretName: {{ . }}
+        certificate: ca.crt
+    {{- end }}
+    {{- with .targetCluster.clientSecret }}
+    authentication: 
+      type: tls
+      certificateAndKey:
+        certificate: user.crt
+        key: user.key
+        secretName: {{ . }}
+    {{- end }}
+    {{- with .targetCluster.config }}
+    config:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  mirrors:
+  - sourceCluster: {{ .sourceCluster.name | quote }}
+    targetCluster: {{ .targetCluster.name | quote }}
+    {{- with .sourceConnector }}
+    sourceConnector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .heartbeatConnector }}
+    heartbeatConnector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .checkpointConnector }}
+    checkpointConnector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    topicsPattern: {{ .topicsPattern | default ".*" | quote}}
+    groupsPattern: {{ .groupsPattern | default ".*" | quote }}
+    {{- with .topicsExcludePattern }}
+    topicsExcludePattern: {{ . }}
+    {{- end }}
+    {{- with .groupsExcludePattern }}
+    groupsExcludePattern: {{ . }}
+    {{- end }}
+  metricsConfig:
+    type: jmxPrometheusExporter
+    valueFrom:
+      configMapKeyRef:
+        name: {{ .name }}-metrics-cfg
+        key: metrics-config.yml
+  template:
+    pod:
+      metadata:
+        annotations:
+          prometheus.io/path: /metrics
+          prometheus.io/port: "9404"
+          prometheus.io/scrape: "true"
+{{- end }}
+{{- end }}

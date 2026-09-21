@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: elastic-configure-job
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  ttlSecondsAfterFinished: 1800
+  template:
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      initContainers:
+        - name: wait-for-elastic
+          image: {{ .Values.elasticsearch.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.elasticsearch.initContainers.curlImage.tag | default "8.12.1" }}
+          command: ["/bin/sh", "-c"]
+          env:
+            - name: ELK_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client
+                  {{- end }}
+                  key: elk-username
+            - name: ELK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client 
+                  {{- end }}
+                  key: elk-password
+          args:
+            - >
+              while [[ $(curl -sw '%{http_code}' -u "$ELK_USERNAME:$ELK_PASSWORD" {{ .Values.elasticJob.ConnectionUrls.elastic }} -o /dev/null) -ne 200 ]]; do
+                sleep 5;
+                echo 'Waiting for Elasticsearch...';
+              done;
+              echo 'Elasticsearch is ready!'
+      restartPolicy: Never
+      containers:
+        - name: elasticJob
+          image: "{{ .Values.elasticJob.image }}:{{ .Values.elasticJob.tag }}"
+          imagePullPolicy: {{ .Values.elasticJob.pullPolicy }}
+          args:
+            - /usr/share/elasticsearch/configElastic.sh
+          env:
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: ES_JAVA_OPTS
+              value: {{ .Values.elasticsearch.elastic_java_options }}
+            - name: ELK_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client
+                  {{- end }}
+                  key: elk-username
+            - name: ELK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if eq (include "platform" .) "onprem" }}
+                  name: internal-elastic-admin-client
+                  {{- else if eq (include "platform" .) "aws" }}
+                  name: elastic-admin-client 
+                  {{- end }}
+                  key: elk-password
+          envFrom:
+            - configMapRef:
+                name: elastic-host-env
+          resources: {}

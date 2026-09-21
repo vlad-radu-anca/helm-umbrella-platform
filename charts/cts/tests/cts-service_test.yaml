@@ -1,0 +1,386 @@
+suite: test cts service
+templates:
+  - cts-service.yaml
+tests:
+  - it: should not render when smallcell_support is disabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render both services when smallcell_support is enabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 7701
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: should create regular service with correct configuration
+    documentIndex: 0
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.type: ClusterIP
+      cts.service.port: 7701
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: cts
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 7701
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 7701
+      - equal:
+          path: spec.ports[0].protocol
+          value: TCP
+      - equal:
+          path: spec.ports[0].name
+          value: http
+
+  - it: should create headless service with correct configuration
+    documentIndex: 1
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 7701
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: cts-headless
+      - equal:
+          path: spec.clusterIP
+          value: None
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 7701
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 7701
+      - equal:
+          path: spec.ports[0].protocol
+          value: TCP
+      - equal:
+          path: spec.ports[0].name
+          value: http
+
+  - it: should use NodePort service type when configured
+    documentIndex: 0
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.type: NodePort
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+
+  - it: should use LoadBalancer service type when configured
+    documentIndex: 0
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.type: LoadBalancer
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: spec.type
+          value: LoadBalancer
+
+  - it: should use custom port when configured for regular service
+    documentIndex: 0
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.type: ClusterIP
+      cts.service.port: 8080
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 7701
+
+  - it: should use custom port when configured for headless service
+    documentIndex: 1
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 8080
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 7701
+
+  - it: should have correct selector labels for regular service
+    documentIndex: 0
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: spec.selector["app.kubernetes.io/name"]
+          value: cts-helm
+      - equal:
+          path: spec.selector["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+
+  - it: should have correct selector labels for headless service
+    documentIndex: 1
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: spec.selector["app.kubernetes.io/name"]
+          value: cts-helm
+      - equal:
+          path: spec.selector["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+
+  - it: should include proper labels for regular service
+    documentIndex: 0
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: cts-helm
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  - it: should include proper labels for headless service
+    documentIndex: 1
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: cts-helm
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  - it: should always use ClusterIP for headless service regardless of main service type
+    documentIndex: 1
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.type: LoadBalancer
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.clusterIP
+          value: None
+
+  - it: should always target port 7701 regardless of service port
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 9999
+    asserts:
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 7701
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 7701
+        documentIndex: 1
+
+  - it: should handle different port values for both services
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 8080
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        documentIndex: 1
+
+  - it: should have consistent port configuration between services
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 8080
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 7701
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 7701
+        documentIndex: 1
+
+  - it: should have different service names
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: metadata.name
+          value: cts
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: cts-headless
+        documentIndex: 1
+
+  - it: should have protocol TCP for both services
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: spec.ports[0].protocol
+          value: TCP
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].protocol
+          value: TCP
+        documentIndex: 1
+
+  - it: should have http name for both services
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 7701
+    asserts:
+      - equal:
+          path: spec.ports[0].name
+          value: http
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].name
+          value: http
+        documentIndex: 1
+
+  - it: should work with values from values.yaml
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.type: ClusterIP
+      cts.service.port: 7701
+    asserts:
+      # Regular service
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].port
+          value: 7701
+        documentIndex: 0
+      # Headless service
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 1
+      - equal:
+          path: spec.clusterIP
+          value: None
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 7701
+        documentIndex: 1
+
+  - it: should work with aws platform
+    set:
+      platform: aws
+      cts.smallcell_support.enabled: true
+      cts.service.type: ClusterIP
+      cts.service.port: 7701
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: cts
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: cts-headless
+        documentIndex: 1
+
+  - it: should handle minimum port value
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 1
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 1
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].port
+          value: 1
+        documentIndex: 1
+
+  - it: should handle maximum port value
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts.service.port: 65535
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 65535
+        documentIndex: 0
+      - equal:
+          path: spec.ports[0].port
+          value: 65535
+        documentIndex: 1

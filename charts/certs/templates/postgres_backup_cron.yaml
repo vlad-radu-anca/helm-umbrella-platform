@@ -1,0 +1,39 @@
+{{- if .Values.cronJobs.postgres.backup_enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+spec:
+  # Backup the database every day at 2AM
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          imagePullSecrets:
+            - name: regcred
+          initContainers:
+          - name: wait-for-postgres
+            image: {{ .Values.initContainers.busyboxImage.repo | default "busybox" }}:{{ .Values.initContainers.busyboxImage.tag | default "1.36.0" }}
+            command: ["sh", "-c", 'until nslookup postgresql | grep "Name:"; do echo waiting for postgres pod...; sleep 2; done']
+          containers:
+          - name: postgres-backup
+            image: "{{ .Values.cronJobs.postgres.image }}:{{ .Values.cronJobs.postgres.tag }}"
+            command: ["/bin/sh"]
+            args: ["-c", 'echo "starting backup..." && PGPASSWORD="password#123" pg_dumpall -U postgres -h postgresql > /var/backups/postgres-backup-dump-$(date +"%m-%d-%Y-%H-%M").sql && echo "Finished postgres dump..." && echo "starting cleaning up old files" && find /var/backups/* -mtime +{{ .Values.cronJobs.postgres.recover_days }} -exec rm {} \;']
+            volumeMounts:
+            - mountPath: /var/backups
+              name: postgres-storage
+          restartPolicy: OnFailure
+          volumes:
+          - name: postgres-storage
+            hostPath:
+            # Ensure the file directory is created.
+              path: {{ .Values.cronJobs.postgres.local_path }}
+              type: DirectoryOrCreate
+          nodeSelector:
+            kubernetes.io/hostname: {{ .Values.cronJobs.postgres.node_name }}
+{{- end }}

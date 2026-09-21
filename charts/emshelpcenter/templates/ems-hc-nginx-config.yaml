@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hc-nginx-config
+data:
+  default.conf: |
+    server {
+        listen                    9094;
+        server_name               localhost;
+        proxy_busy_buffers_size   512k;
+        proxy_buffers             4 512k;
+        proxy_buffer_size         256k;
+        client_max_body_size      100M; # default 1M, 0 = any size
+
+        # redirect server error pages to the static page /50x.html
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+            try_files $uri $uri/ /index.html;
+        }
+
+        location ~ ^/(release-tags|download-content)$ {
+            proxy_pass          http://127.0.0.1:3002/$1;
+        }
+
+        # location ~ ^/(v\d+/images/.*)$ {
+        #     proxy_pass          http://127.0.0.1:9094/assets/content/$1;
+        # }
+
+        location ~ ^/assets/brand/(.*)$ {
+            proxy_pass          http://127.0.0.1:9094/assets/brands/{{ .Values.emshelpcenter.BRAND_NAME }}/$1;
+        }
+    }

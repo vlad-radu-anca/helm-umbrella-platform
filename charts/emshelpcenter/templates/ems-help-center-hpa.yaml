@@ -1,0 +1,37 @@
+{{- if .Values.emshelpcenter.enabled }}
+{{- if .Values.emshelpcenter.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "emshelpcenter.fullname" . }}
+  labels:
+    app: {{ template "emshelpcenter.name" . }}
+    chart: {{ template "emshelpcenter.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ems-help-center
+  minReplicas: {{ .Values.emshelpcenter.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.emshelpcenter.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.emshelpcenter.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.emshelpcenter.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.emshelpcenter.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.emshelpcenter.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,46 @@
+platform: onprem
+loadBalancerIP: "0.0.0.0"
+apiKey: ""
+elasticAuthBase64: ""
+reportToken: ""
+cpeSupport:
+  enabled: false
+enbSupport:
+  enabled: false
+smallcellSupport:
+  enabled: false
+spcSupport:
+  enabled: false
+  serial_number: ""
+  wss_address: ""
+  address: ""
+sseEnbSnmpProxyEnabled: false
+enabled: true
+image: ghcr.io/vlad-radu-anca/ems-snmpproxy
+tag: latest
+pullPolicy: Always
+replicaCount: 1
+imagePullSecrets: []
+podAnnotations: {}
+tolerations: []
+resources: {}
+nodeSelector:
+  onprem: {}
+  aws: {}
+affinity: {}
+snmpproxy_agent_port: 16161
+snmpproxy_notification_port: 16162
+snmpproxy_trap_port: 162
+snmpproxy_memory: "512m"
+snmpproxy_jvm_options: "-Xms256m -Xmx512m"
+ConnectionUrls:
+  elastic: http://elastic:9200
+initContainers:
+  curlImage:
+    repo: curlimages/curl
+    tag: 8.12.1
+
+securityContext:
+  fsGroup: 2500
+  runAsUser: 2500
+  runAsGroup: 2500

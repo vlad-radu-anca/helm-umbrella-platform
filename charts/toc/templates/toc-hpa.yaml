@@ -1,0 +1,37 @@
+{{- if .Values.toc.smallcell_support.enabled }}
+{{- if .Values.toc.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "toc.fullname" . }}
+  labels:
+    app: {{ template "toc.name" . }}
+    chart: {{ template "toc.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: toc
+  minReplicas: {{ .Values.toc.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.toc.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.toc.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.toc.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.toc.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.toc.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+{{- end }}

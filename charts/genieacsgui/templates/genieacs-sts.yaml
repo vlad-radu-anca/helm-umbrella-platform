@@ -1,0 +1,88 @@
+{{- if .Values.cpeSupport.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: genieacsgui
+  labels:
+    {{- include "genieacsgui.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "genieacsgui.selectorLabels" . | nindent 6 }}
+  serviceName: genieacsgui
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "genieacsgui.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+      initContainers:
+      - name: wait-for-dependency
+        image: {{ .Values.initContainers.busyboxImage.repo | default "busybox" }}:{{ .Values.initContainers.busyboxImage.tag | default "1.36.0" }}
+        command: ['sh', '-c', 'until nslookup mongo | grep "Name:"; do echo waiting for mongo; sleep 2; done;']
+      priorityClassName: ems-platform-medium-priority
+      containers:
+        - name: genieacsgui
+          image: "{{ .Values.image }}:{{ .Values.tag }}"
+          ports:
+            - containerPort: 3000
+              name: http
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          startupProbe:
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
+            tcpSocket:
+              host:
+              port: 3000
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            failureThreshold: 15
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            failureThreshold: 6
+            periodSeconds: 10
+          envFrom:
+            - configMapRef:
+                name: genieacs-config-env
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+  # volumeClaimTemplates:
+  #   - metadata:
+  #       name: genieacs-gui-persistent-storage
+  #     spec:
+  #       accessModes:
+  #         - ReadWriteOnce
+  #       resources:
+  #         requests:
+  #           storage: 3Gi
+# dummy volume for storing secrets
+{{- end }}

@@ -1,0 +1,83 @@
+name: Main Workflow
+
+on:
+  pull_request:
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed_charts: ${{ steps.detect-charts.outputs.charts }}
+      any_changes: ${{ steps.detect-charts.outputs.any_changes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          
+      - name: Install jq
+        run: sudo apt-get install -y jq
+      
+      - name: Debug - Show changed files
+        run: |
+          echo "Base: ${{ github.event.pull_request.base.sha }}"
+          echo "Head: ${{ github.event.pull_request.head.sha }}"
+          echo "Changed files:"
+          git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}
+
+      - name: Detect changed charts
+        id: detect-charts
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_REF="${{ github.event.pull_request.base.sha }}"
+            HEAD_REF="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_REF="${{ github.event.before }}"
+            HEAD_REF="${{ github.sha }}"
+          fi
+
+          if [[ "$BASE_REF" == "0000000000000000000000000000000000000000" ]]; then
+            DIFF_CMD="git diff --name-only HEAD~1 HEAD"
+          else
+            DIFF_CMD="git diff --name-only $BASE_REF $HEAD_REF"
+          fi
+
+          RAW=$(eval $DIFF_CMD | grep -oP 'charts/\K[^/]+' | sort -u)
+
+          CHANGED=$(for chart in $RAW; do
+          if [ -d "charts/$chart" ]; then echo "$chart"; fi
+          done | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "charts=$CHANGED" >> $GITHUB_OUTPUT
+
+          if [[ "$CHANGED" == "[]" ]]; then
+            echo "any_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "any_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Changed charts: $CHANGED"
+
+  linter:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.any_changes == 'true'
+    uses: ./.github/workflows/linter.yaml
+    with:
+      charts: ${{ needs.detect-changes.outputs.changed_charts }}
+
+  dry-run:
+    needs: [detect-changes, linter]
+    if: needs.detect-changes.outputs.any_changes == 'true'
+    uses: ./.github/workflows/dry-run.yaml
+    with:
+      charts: ${{ needs.detect-changes.outputs.changed_charts }}
+
+  release-validation:
+    needs: [detect-changes, linter, dry-run]
+    if: needs.detect-changes.outputs.any_changes == 'true'
+    uses: ./.github/workflows/release-validation.yaml
+    with:
+      charts: ${{ needs.detect-changes.outputs.changed_charts }}
+
+  # Note: version-bump and publish-chart have been removed from here
+  # They now run in the post-merge.yaml workflow when the PR is merged

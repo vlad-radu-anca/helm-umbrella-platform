@@ -1,0 +1,485 @@
+suite: test cts configmap
+templates:
+  - cts-config.yaml
+tests:
+  - it: should not render when smallcell_support is disabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render configmap when smallcell_support is enabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      dev_mode: false
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-client-secret"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: cts-application-config
+
+  - it: should set devMode from global dev_mode value
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      dev_mode: false
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo-tenant:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "devMode: false"
+
+  - it: should use onprem mongo URI with authSource for onprem platform
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'uri: "mongodb://mongo-tenant:27017/\?serverSelectionTimeoutMS=4000&replicaSet=rs0&authSource=tocdb"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "database: tocdb"
+
+  - it: should use aws mongo URI for aws platform
+    set:
+      platform: aws
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            aws:
+              uri: "mongodb+srv://cluster0.example.mongodb.net"
+          elastic: "http://elastic:9200"
+          keycloak:
+            aws: "http://keycloak-headless.keycloak.svc.cluster.local:8080/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'uri: "mongodb\+srv://cluster0\.example\.mongodb\.net"'
+
+  - it: should contain rbacDb configuration from values
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "host: postgresql-hl"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "port: 5432"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "dbName: rbac_defaulttenant"
+
+  - it: should contain elastic client configuration from values
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'addresses:\s+- http://elastic:9200'
+
+  - it: should use onprem keycloak URL for onprem platform
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-client-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'url: "http://keycloak/auth/"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "clientSecret: test-client-secret"
+
+  - it: should use aws keycloak URL for aws platform
+    set:
+      platform: aws
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            aws:
+              uri: "mongodb+srv://cluster.mongodb.net"
+          elastic: "http://elastic:9200"
+          keycloak:
+            aws: "http://keycloak-headless.keycloak.svc.cluster.local:8080/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'url: "http://keycloak-headless\.keycloak\.svc\.cluster\.local:8080/auth/"'
+
+  - it: should contain complete application configuration from values
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      dev_mode: false
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-client-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'name: "cts"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "port: 7701"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "internalHost: cts-headless:7701"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "devMode: false"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "maxRequests: 100"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "generate: false"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'logLevel: "DEBUG"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "enablePrintRoutes: true"
+
+  - it: should contain mongo client configuration with correct settings
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "connectionTimeout: 30"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "socketTimeout: 10"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "serverSelection: 30"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "minPoolSize: 1"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "maxPoolSize: 20"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "heartBeatInterval: 10"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "retryWrites: true"
+
+  - it: should contain tocApp configuration
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'name: "toc"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'baseUrl: "toc-headless"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "port: 7001"
+
+  - it: should contain keycloak client configuration
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-client-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'realmId: "DefaultTenant"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: 'clientName: "toc"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "executeActionsEmailLifespan: 43200"
+
+  - it: should set devMode to true when dev_mode is enabled
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      dev_mode: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "devMode: true"
+
+  - it: should default devMode to false when not specified
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "devMode: false"
+
+  - it: should contain rate limit configuration
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "maxRequests: 100"
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "expiration: 10"
+
+  - it: should contain swagger configuration
+    set:
+      platform: onprem
+      cts.smallcell_support.enabled: true
+      cts:
+        ConnectionUrls:
+          mongo:
+            onprem:
+              uri: "mongodb://mongo:27017"
+          elastic: "http://elastic:9200"
+          keycloak:
+            onprem: "http://keycloak/auth"
+          pgDb:
+            host: "postgresql-hl"
+            port: 5432
+        dbs:
+          mongo:
+            name: "tocdb"
+        keycloak:
+          clientSecret: "test-secret"
+    asserts:
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "generate: false"

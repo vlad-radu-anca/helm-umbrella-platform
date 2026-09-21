@@ -1,0 +1,49 @@
+kafkaMirror:
+  enabled: true
+  name: blue-to-green
+  kafkaVersion: 3.9.0
+  replicaCount: 1
+  sourceCluster:
+    name: ems-platform-kafka-blue
+    trustSecret: ems-platform-kafka-blue-ca-cert
+    #auth:
+    #  type: tls
+    #  secret: ems-platform-kafka-blue-external-user
+    bootstrapServers: kafka-bootstrap.fqdn
+    config:
+      config.storage.replication.factor: -1
+      offset.storage.replication.factor: -1
+      status.storage.replication.factor: -1   
+      compression.type: gzip
+      batch.size: 8192   
+  targetCluster:
+    name: ems-platform-kafka-green
+    bootstrapServers: kafka:9092
+    config:
+      compression.type: gzip
+      batch.size: 8192   
+  sourceConnector:
+    autoRestart:
+      enabled: true
+    config:
+      sync.topic.acls.enabled: "false"
+      replication.policy.separator: ""
+      replication.policy.class: "io.strimzi.kafka.connect.mirror.IdentityReplicationPolicy"
+      replication.factor: 1
+      offset-syncs.topic.replication.factor: 1
+      refresh.topics.interval.seconds: 60
+    listOffsets:
+      toConfigMap:
+        name: mirrormaker2-source-connector-offsets
+  heartbeatConnector:
+    config:
+      heartbeats.topic.replication.factor: 1
+  checkpointConnector:
+    config:
+      checkpoints.topic.replication.factor: 1
+      replication.policy.class: "io.strimzi.kafka.connect.mirror.IdentityReplicationPolicy"        
+      sync.group.offsets.enabled: true
+      #sync.group.offsets.interval.seconds: 60
+      #emit.checkpoints.interval.seconds: 60
+      refresh.groups.interval.seconds: 60
+

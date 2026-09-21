@@ -1,0 +1,95 @@
+platform: onprem #or aws
+
+spark:
+  kafkaCluster:
+    enabled: true
+  smallcell_support: # small cell 5g support
+    enabled: true
+  ConnectionUrls:
+    onprem:
+      keycloak: http://keycloak/auth
+    aws: 
+      keycloak: http://keycloak-headless.keycloak.svc.cluster.local:8080/auth
+  image: vlad-radu-anca/ems-spark
+  tag: 5.0.latest
+  pullPolicy: Always
+  spark_jvm_options: '-Xms3000m -Xmx3000m -Djava.awt.headless=true -XX:+AlwaysPreTouch -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/ems-config -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -Djava.net.preferIPv4Stack=true -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExitOnOutOfMemoryError'
+  sse_enb_snmp_proxy_enabled: false
+    
+  replicaCount: 1
+  imagePullSecrets: [name: "regcred"]
+  nameOverride: ""
+  fullnameOverride: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 4040
+  
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations: {}
+      # cert-manager.io/cluster-issuer: selfsigned-cluster-issuer
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: spark.{{ $endpoint }}
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls:
+      - secretName: spark-tls-secret
+        hosts:
+          - spark.{{ $endpoint }}
+
+  resources:
+    limits:
+      cpu: 8000m
+      memory: 5000Mi
+    requests:
+      cpu: 1000m
+      memory: 4750Mi
+  
+  nodeSelector:
+    aws:
+      karpenter-node: ems-platform-autoscalernode-large
+    onprem: {}
+    default:
+  tolerations: []
+  affinity: {}
+  spc_support:
+    enabled: true
+    address: "confd-headless"
+    serial_number: "SP0-0000000000"
+    wss_address: "spark-hl"
+  enb_support:
+    enabled: true
+  cpe_support:
+    enabled: true
+  enb_support:
+    enabled: true
+  gNB_support: # small cell 5g support
+    enabled: true
+  snmpproxy_jvm_options: '-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=25 -XX:G1MaxNewSizePercent=30 -XX:ParallelGCThreads=3 -XX:ConcGCThreads=1 -XX:InitiatingHeapOccupancyPercent=35 -XX:-ResizePLAB -XX:+UseStringDeduplication -XX:+ExitOnOutOfMemoryError'
+  snmpproxy_memory: 750m
+  snmpproxy_agent_port: 16163
+  snmpproxy_notification_port: 16162
+  snmpproxy_trap_port: 16161
+  initContainers:
+    curlImage:
+      repo: curlimages/curl
+      tag: 8.12.1
+  secrets:
+    internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
+    identity: spark-identity-secret
+    trust: spark-trust-secret
+    spark:
+
+endpoint: ems.example.local
+
+dev_mode: false
+
+securityContext:
+  fsGroup: 10000
+  runAsUser: 10000
+  runAsGroup: 10000

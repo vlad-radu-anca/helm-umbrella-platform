@@ -1,0 +1,87 @@
+{{- if .Values.tus.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tus-consumer
+  labels:
+    {{- include "tus.labels" . | nindent 4 }}
+    app: tus-consumer
+spec:
+  replicas: {{ .Values.tus.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "tus.selectorLabels" . | nindent 6 }}
+      app: tus-consumer
+  template:
+    metadata:
+      labels:
+        {{- include "tus.selectorLabels" . | nindent 8 }}
+        app: tus-consumer
+    spec:
+      {{- with .Values.tus.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: tus-pvc
+        persistentVolumeClaim:
+          claimName: tus-pvc
+      - name: tus-consumer-config
+        configMap:
+          name: tus-consumer-application-config
+      containers:
+      - name: tus-consumer
+        image: {{ .Values.tus.consumer.image }}:{{ .Values.tus.consumer.tag }}
+        imagePullPolicy: {{ .Values.tus.pullPolicy }}
+        ports:
+        - containerPort: 8081
+          name: http
+        volumeMounts:
+        - name: tus-pvc
+          mountPath: /var/lib/tusd-data
+        - name: tus-consumer-config
+          mountPath: /app/config
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 5
+        resources:
+          {{- toYaml .Values.tus.consumer.resources | nindent 10 }}
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.tus.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.tus.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      {{- with .Values.tus.nodeSelector.default }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.tus.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tus.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,56 @@
+apiVersion: v1
+data:
+  DEV_MODE: '{{ .Values.coreApi.data.dev_mode }}'
+  DIESEL_JAVA_OPTIONS: '{{ .Values.coreApi.data.diesel_java_options }}'
+  ACS_ENABLED: '{{ .Values.coreApi.data.cpe_support.enabled }}'
+  ENB_ENABLED: '{{ .Values.coreApi.data.enb_support.enabled }}'
+  DIESEL_WIKI_HEADER_X_FRAME_OPTIONS_VALUE: '{{ .Values.coreApi.data.dieselWikiHeaderXFrameOptionsValue }}'
+  DIESEL_WIKI_HEADERS: '{{  .Values.coreApi.data.diesel_wiki_header }}'
+  SFTP_IP: '{{ .Values.coreApi.data.sftp_ip }}'
+  DIESEL_SECRET: '{{  .Values.coreApi.data.diesel_secret }}'
+  EMS_CLIENT_SECRET: '{{ .Values.coreApi.data.ems_client_secret }}'
+  POSTGRES_URL: 'jdbc:postgresql://{{ .Values.ConnectionUrls.pgDb.host }}/{{ .Values.ConnectionUrls.pgDb.dbname }}?ssl=false'
+  KEYCLOAK_URL: '{{ if eq .Values.platform "aws" }}{{ .Values.ConnectionUrls.keycloak.aws }}{{ else }}{{ .Values.ConnectionUrls.keycloak.onprem }}{{ end }}'
+  GENIEACS_API_URL: http://genieacsnbi.{{ template "coreApi.Namespace" . }}.svc.cluster.local:7557
+  SPARK_URL: http://spark.{{ template "coreApi.Namespace" . }}.svc.cluster.local:4041
+  SPARK_METRICS_URL: http://spark.{{ template "coreApi.Namespace" . }}.svc.cluster.local:4040
+  TOCUrlBase: '{{ .Values.coreApi.data.TOCUrlBase }}'
+kind: ConfigMap
+metadata:
+  name: core-api-config-env
+---
+apiVersion: v1
+data:
+  logback.core-api.xml: |+
+    <configuration debug="false">
+
+      <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>${application.home}/logs/log.log</file>
+        <encoder>
+          <pattern>%date %.-1level %.7thread %logger : %message %xException%n</pattern>
+        </encoder>
+      </appender>
+
+      <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+          <pattern>%d %.-1level [%.7thread] %logger{0}: %msg%n</pattern>
+        </encoder>
+      </appender>
+
+      <root level="info">
+        <appender-ref ref="CONSOLE"/>
+      </root>
+
+      <logger name="netty" level="info"/>
+      <logger name="controllers" level="info"/>
+      <logger name="model" level="info"/>
+      <logger name="views" level="info"/>
+      <logger name="admin" level="info"/>
+      <logger name="razie" level="info"/>
+      <logger name="razie.diesel" level="info"/>
+    </configuration>
+
+kind: ConfigMap
+metadata:
+  name: core-api-properties
+---

@@ -1,0 +1,146 @@
+{{- if or .Values.k8sKafkaUpgrade.enabled .Values.upgradeTransformsMongo.enabled .Values.upgradeTransformsPg.enabled .Values.upgradeTransformsElastic.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: upgrade-stack-config
+  labels:
+    app: upgrade-stack
+    {{- include "upgrade-stack.labels" . | nindent 4 }}
+data:
+  application.yaml: |
+    {{- $tc := .Values.temporalClient }}
+    temporalClient:
+      hostPort: {{ $tc.hostPort | quote }}
+      namespace: {{ $tc.namespace | quote }}
+      taskQueue: {{ $tc.taskQueue | quote }}
+      workflowID: {{ default "kafka-upgrade-workflow" $tc.workflowID | quote }}
+      workflowRunTimeout: {{ default "1h" $tc.workflowRunTimeout | quote }}
+      useWorkflow: {{ default true $tc.useWorkflow }}
+      tls:
+        enabled: {{- if and $tc $tc.tls }} {{ default false $tc.tls.enabled }} {{- else }} false {{- end }}
+        serverName: {{- if and $tc $tc.tls }} {{ default "temporal-frontend.temporal.svc.cluster.local" $tc.tls.serverName | quote }} {{- else }} "temporal-frontend.temporal.svc.cluster.local" {{- end }}
+        certificatePath: {{- if and $tc $tc.tls }} {{ default "/etc/temporal/certs/tls.crt" $tc.tls.certificatePath | quote }} {{- else }} "/etc/temporal/certs/tls.crt" {{- end }}
+        keyPath: {{- if and $tc $tc.tls }} {{ default "/etc/temporal/certs/tls.key" $tc.tls.keyPath | quote }} {{- else }} "/etc/temporal/certs/tls.key" {{- end }}
+        caPath: {{- if and $tc $tc.tls }} {{ default "/etc/temporal/certs/ca.crt" $tc.tls.caPath | quote }} {{- else }} "/etc/temporal/certs/ca.crt" {{- end }}
+      auth:
+        enabled: {{- if and $tc $tc.auth }} {{ default false $tc.auth.enabled }} {{- else }} false {{- end }}
+        type: {{- if and $tc $tc.auth }} {{ default "jwt" $tc.auth.type | quote }} {{- else }} "jwt" {{- end }}
+        tokenPath: {{- if and $tc $tc.auth }} {{ default "/etc/temporal/auth/token" $tc.auth.tokenPath | quote }} {{- else }} "/etc/temporal/auth/token" {{- end }}
+
+    metrics:
+      port: 8080
+      pushgateway:
+        port: 9091
+        host: PUSHGATEWAY_HOST
+
+    logger:
+      logLevel: "TRACE"
+      callerLevel: "TRACE"
+      stackTraceLevel: "TRACE"
+      charLimit: 1024
+      ###   formatJson: true
+
+    statusLogger:
+      idxName: "upgrade-logs"
+
+    app:
+      devMode: {{ default false .Values.app.devMode }}
+
+    mongoClient:
+      toc:
+        source:
+          host: {{ .Values.mongoClient.toc.source.host }}
+          port: {{ .Values.mongoClient.toc.source.port }}
+          dbName: {{ .Values.mongoClient.toc.source.dbName }}
+        target:
+          host: {{ .Values.mongoClient.toc.target.host }}
+          port: {{ .Values.mongoClient.toc.target.port }}
+          dbName: {{ .Values.mongoClient.toc.target.dbName }}
+        includeTableNames:
+          - UserCollection
+          - DeviceCollection
+          - SiteCollection
+        excludeTableNames:
+          - FileTransferCollection
+      spc:
+        source:
+          host: {{ .Values.mongoClient.spc.source.host }}
+          port: {{ .Values.mongoClient.spc.source.port }}
+          dbName: {{ .Values.mongoClient.spc.source.dbName }}
+        target:
+          host: {{ .Values.mongoClient.spc.target.host }}
+          port: {{ .Values.mongoClient.spc.target.port }}
+          dbName: {{ .Values.mongoClient.spc.target.dbName }}
+        includeTableNames:
+          - abc
+          - def
+        excludeTableNames:
+          - xyz
+      spckpi:
+        source:
+          host: {{ .Values.mongoClient.spckpi.source.host }}
+          port: {{ .Values.mongoClient.spckpi.source.port }}
+          dbName: {{ .Values.mongoClient.spckpi.source.dbName }}
+        target:
+          host: {{ .Values.mongoClient.spckpi.target.host }}
+          port: {{ .Values.mongoClient.spckpi.target.port }}
+          dbName: {{ .Values.mongoClient.spckpi.target.dbName }}
+        includeTableNames:
+          - abc
+          - def
+        excludeTableNames:
+          - xyz
+
+    loggerElasticClient:
+      addresses: {{ .Values.loggerElasticClient.addresses | quote }}
+      connectionTimeout: {{ .Values.loggerElasticClient.connectionTimeout }}
+      idxName: {{ .Values.loggerElasticClient.idxName | quote }}
+
+    elasticClient:
+      searchSize: 1000
+      idsSearchSize: 10000
+      source:
+        host: {{ .Values.elasticClient.source.host }}
+        port: {{ .Values.elasticClient.source.port }}
+      target:
+        host: {{ .Values.elasticClient.target.host }}
+        port: {{ .Values.elasticClient.target.port }}
+      includeIdxNames:
+        # - testAllVersionsIncludedIdx
+        # - testIncIdx58
+        # - testIncIdx59
+      excludeIdxNames:
+        - testAllVersionsExcludedIdx
+        - testExcIdx58
+        - testExcIdx59
+        - cdc-done # idx to store CDC stop marker
+        - upgrade-logs
+
+    psqlClient:
+      grafana:
+        source:
+          dbName: {{ .Values.psqlClient.grafana.source.dbName }}
+          host: {{ .Values.psqlClient.grafana.source.host }}
+          port: {{ .Values.psqlClient.grafana.source.port }}
+        target:
+          dbName: {{ .Values.psqlClient.grafana.target.dbName }}
+          host: {{ .Values.psqlClient.grafana.target.host }}
+          port: {{ .Values.psqlClient.grafana.target.port }}
+        includeTableNames: []
+        excludeTableNames:
+          - change_log
+      keycloak:
+        source:
+          dbName: {{ .Values.psqlClient.keycloak.source.dbName }}
+          host: {{ .Values.psqlClient.keycloak.source.host }}
+          port: {{ .Values.psqlClient.keycloak.source.port }}
+        target:
+          dbName: {{ .Values.psqlClient.keycloak.target.dbName }}
+          host: {{ .Values.psqlClient.keycloak.target.host }}
+          port: {{ .Values.psqlClient.keycloak.target.port }}
+        includeTableNames:
+          - user_entity
+        excludeTableNames:
+          - change_log
+{{- end }}
