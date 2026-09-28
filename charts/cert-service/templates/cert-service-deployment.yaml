@@ -1,0 +1,149 @@
+{{- if .Values.smallcell_support.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cert-service
+  labels:
+    {{- include "certservice.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.certservice.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "certservice.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "certservice.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: {{ .Values.certservice.spec.securityContext.fsGroup }}
+        runAsUser: {{ .Values.certservice.spec.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.certservice.spec.securityContext.runAsGroup }}
+      {{- with .Values.certservice.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      priorityClassName: platform-high-priority
+      serviceAccountName: ecm-sa
+      initContainers:
+      - name: wait-for-mongo
+        image: {{ .Values.mongoInit.image | default "public.ecr.aws/bitnami/mongodb" }}:{{ .Values.mongoInit.tag | default "8.0.6-debian-12-r0" }}
+        env:
+          - name: MONGO_USERNAME
+            valueFrom:
+              secretKeyRef:
+                {{- if eq (include "platform" .) "onprem" }}
+                name: external-mongo-appdb-secret
+                {{- else if eq (include "platform" .) "aws" }}
+                name: mongo-appdb-client
+                {{- end }}
+                key: mongo-username
+          - name: MONGO_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                {{- if eq (include "platform" .) "onprem" }}
+                name: external-mongo-appdb-secret
+                {{- else if eq (include "platform" .) "aws" }}
+                name: mongo-appdb-client
+                {{- end }}
+                key: mongo-password
+        command:
+          - bash
+          - -c
+          - >
+            {{- if eq (include "platform" .) "aws" }}
+            until mongosh "{{ .Values.ConnectionUrls.mongo.aws.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)";
+            {{- else if eq (include "platform" .) "onprem" }}
+            until mongosh "{{ .Values.ConnectionUrls.mongo.onprem.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)";
+            {{- end }}
+            do echo "Waiting for MongoDB to be available"; sleep 2; done;
+      - name: wait-for-elastic
+        image: {{ .Values.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.initContainers.curlImage.tag | default "8.12.1" }}
+        command: [ "/bin/sh", "-c" ]
+        env:
+          - name: ELK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: internal-elastic-admin-client
+                key: elk-username
+          - name: ELK_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: internal-elastic-admin-client
+                key: elk-password
+        args:
+          - "while [[ $(curl -sw '%{http_code}' -u \"$ELK_USERNAME:$ELK_PASSWORD\" {{ .Values.ConnectionUrls.elastic }} -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the Elastic to be ready...'; done; echo 'Connection with Elastic established'"
+      containers:
+        - image: "{{ .Values.certservice.containers.image }}:{{- if eq (include "platform" .) "aws" }}{{ .Values.certservice.containers.aws.tag }}{{- else if eq (include "platform" .) "onprem" }}{{ .Values.certservice.containers.onprem.tag }}{{- end }}"
+          imagePullPolicy: {{ .Values.certservice.pullPolicy }}
+          name: certservice
+          env:
+            - name: CERT-MGMT_PLATFORM_SERIALNUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: platform-serialnumber
+                  key: PLATFORM_SERIALNUMBER
+          ports:
+            - containerPort: 7702
+              name: http
+          resources:
+            {{- toYaml .Values.certservice.resources | nindent 12 }}
+          volumeMounts:
+            - name: cert-service-application-config
+              mountPath: /app/config/application.yaml
+              subPath: application.yaml
+          {{- if or (eq (include "platform" .) "onprem") (eq (include "platform" .) "aws") }}
+            - name: elastic-client-secrets
+              mountPath: "/opt/platform/config/elastic"
+              readOnly: true
+            - name: mongo-appdb-secrets
+              mountPath: "/opt/platform/config/mongo"
+              readOnly: true
+          {{- end }}
+      restartPolicy: Always
+      {{- if eq (include "platform" .) "aws" }}
+      {{- with .Values.certservice.nodeSelector.aws }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else if eq (include "platform" .) "onprem" }}
+      {{- with .Values.certservice.nodeSelector.onprem }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.certservice.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.certservice.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: cert-service-application-config
+          configMap:
+            name: cert-service-application-config
+        {{- if eq (include "platform" .) "onprem" }}
+        - name: elastic-client-secrets
+          secret:
+            secretName: internal-elastic-admin-client
+        - name: mongo-appdb-secrets
+          secret:
+            secretName: external-mongo-appdb-secret
+        {{- else if eq (include "platform" .) "aws" }}
+        - name: elastic-client-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "{{ .Values.certservice.secrets.internal_elastic_client | replace "_" "-" }}"
+        - name: mongo-appdb-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: mongoatlas-appdb-secrets
+        {{- end }}
+{{- end }}

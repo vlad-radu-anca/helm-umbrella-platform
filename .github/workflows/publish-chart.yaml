@@ -60,7 +60,7 @@ jobs:
 
           # Manual run with "all": every chart directory except the umbrella
           if [[ "$CHARTS" == "all" ]]; then
-            CHARTS=$(ls -d charts/*/ | xargs -n1 basename | grep -v '^ems-platform-stack$' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            CHARTS=$(ls -d charts/*/ | xargs -n1 basename | grep -v '^platform-stack$' | jq -R -s -c 'split("\n") | map(select(length > 0))')
             echo "Expanded 'all' to: $CHARTS"
           fi
 
@@ -109,8 +109,8 @@ jobs:
           while IFS= read -r CHART; do
             [[ -z "$CHART" ]] && continue
 
-            # Skip umbrella chart (ems-platform-stack)
-            if [[ "$CHART" == "ems-platform-stack" ]]; then
+            # Skip umbrella chart (platform-stack)
+            if [[ "$CHART" == "platform-stack" ]]; then
               echo "🚫 Skipping umbrella chart: $CHART"
               continue
             fi
@@ -144,4 +144,4 @@ jobs:
         if: steps.check-charts.outputs.has_charts == 'false'
         run: |
           echo "ℹ️ No individual charts detected for publishing in this ${{ github.event_name }} event"
-          echo "📝 Note: Umbrella chart (ems-platform-stack) is excluded from this workflow"
+          echo "📝 Note: Umbrella chart (platform-stack) is excluded from this workflow"

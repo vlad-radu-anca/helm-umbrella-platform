@@ -61,7 +61,7 @@ spec:
             - >
               while [[ $(curl -sw '%{http_code}' {{ if eq .Values.platform "aws" }}{{ .Values.ConnectionUrls.keycloak.aws }}{{ else }}{{ .Values.ConnectionUrls.keycloak.onprem }}{{ end }}/realms/DefaultTenant -o /dev/null) -ne 200 ]]; do sleep 30; echo 'Waiting for the keycloak to be ready...'; done; echo 'Connection with keycloak established'
 
-      priorityClassName: ems-platform-high-priority
+      priorityClassName: platform-high-priority
 
       containers:
         - name: core-api
@@ -86,7 +86,7 @@ spec:
             failureThreshold: 30
             httpGet:
               scheme: HTTP
-              path: /diesel/rest/v1/ems/local/started
+              path: /diesel/rest/v1/platform/local/started
               port: 9000
           livenessProbe:
             httpGet:
@@ -139,16 +139,16 @@ spec:
               mountPath: /home/razvanc/rk/dist/conf/logback.prod.xml
               subPath: logback.core-api.xml
             - name: keycloak-admin-client-secrets
-              mountPath: /opt/ems-platform/config/keycloakAdmin
+              mountPath: /opt/platform/config/keycloakAdmin
               readOnly: true
             - name: keycloak-core-api-secrets
-              mountPath: /opt/ems-platform/config/keycloak
+              mountPath: /opt/platform/config/keycloak
               readOnly: true
             - name: elastic-client-secrets
-              mountPath: /opt/ems-platform/config/elastic
+              mountPath: /opt/platform/config/elastic
               readOnly: true
-            - name: pg-perms-ems-platform-secrets
-              mountPath: /opt/ems-platform/config/postgres
+            - name: pg-perms-platform-secrets
+              mountPath: /opt/platform/config/postgres
               readOnly: true
 
       restartPolicy: Always
@@ -195,7 +195,7 @@ spec:
         - name: elastic-client-secrets
           secret:
             secretName: internal-elastic-admin-client
-        - name: pg-perms-ems-platform-secrets
+        - name: pg-perms-platform-secrets
           secret:
             secretName: internal-pg-client
         {{- else if eq (include "platform" .) "aws" }}
@@ -217,7 +217,7 @@ spec:
             readOnly: true
             volumeAttributes:
               secretProviderClass: "{{ .Values.coreApi.secrets.internal_elastic_client | replace "_" "-" }}"
-        - name: pg-perms-ems-platform-secrets
+        - name: pg-perms-platform-secrets
           csi:
             driver: secrets-store.csi.k8s.io
             readOnly: true

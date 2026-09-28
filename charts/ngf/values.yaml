@@ -1,5 +1,5 @@
 platform: onprem
-endpoint: "ems.example.local"
+endpoint: "platform.example.local"
 smallcell_support:
   enabled: true
 ngf_enabled: true
@@ -9,8 +9,8 @@ port:
     aws: 80
   https:
     onprem: 9443
-hostname: "emsapi.{{ .Values.endpoint }}"
-allowOrigin: "emsui.{{ .Values.endpoint }}"
+hostname: "platform-api.{{ .Values.endpoint }}"
+allowOrigin: "webui.{{ .Values.endpoint }}"
 cert:
   issuer: selfsigned-cluster-issuer
   commonName: my-selfsigned-ca
@@ -36,7 +36,7 @@ paths:
   - /config-module-groups
   - /config-modules
   - /config-templates
-  emscertmanager:
+  certservice:
   - /keystore
   - /truststore
   apigw:
@@ -75,8 +75,8 @@ ngf:
       aws: 80
     https:
       onprem: 9443
-  hostname: "emsapi.ems.example.local"
-  allowOrigin: "emsui.ems.example.local"
+  hostname: "platform-api.platform.example.local"
+  allowOrigin: "webui.platform.example.local"
   cert:
     issuer: selfsigned-cluster-issuer
     commonName: my-selfsigned-ca
@@ -89,11 +89,11 @@ ngf:
   paths:
     toc: [/auth, /clusters, /devices, /networks, /organizations, /regions, /sites, /users]
     cts: [/config-module-groups, /config-modules, /config-templates]
-    emscertmanager: [/keystore, /truststore]
+    certservice: [/keystore, /truststore]
     apigw: [/active-alarms, /alarms, /events, /health]
     swagger: [/swagger, /redoc, /doc.json]
 
 certificate:
   subject:
     organizations:
-      - ems-platform
+      - platform

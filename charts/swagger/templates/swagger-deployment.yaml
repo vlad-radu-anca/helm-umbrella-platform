@@ -20,7 +20,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      priorityClassName: ems-platform-high-priority
+      priorityClassName: platform-high-priority
       initContainers:
         - name: wait-for-toc
           image: {{ .Values.swagger.initContainers.curlImage.repo | default "curlimages/curl" }}:{{ .Values.swagger.initContainers.curlImage.tag | default "8.12.1" }}

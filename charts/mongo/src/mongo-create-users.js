@@ -5,10 +5,10 @@
 Example cfg
     {
         "mongoUri": "mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0",
-        "credsDir": "/opt/ems/config/mongo/admin",
+        "credsDir": "/opt/platform/config/mongo/admin",
         "users": [
             {
-                "credsDir": "/opt/ems/config/mongo/spcdb",
+                "credsDir": "/opt/platform/config/mongo/spcdb",
                 "dbName": "spcdb"
             }
         ],

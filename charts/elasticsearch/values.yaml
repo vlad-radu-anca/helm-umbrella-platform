@@ -1,22 +1,22 @@
 platform: onprem  # or aws
 
-endpoint: ems.example.local
+endpoint: platform.example.local
 
 elasticJob:
   ConnectionUrls:
     elastic: http://elastic:9200
-  namespace: ems-platform
+  namespace: platform
   image: vlad-radu-anca/elastic-job
   tag: 5.0.latest
   pullPolicy: Always
   replicaCount: 0
   shardCount: 1
-  internal_elastic_admin_client: "ems-platform_internal_elastic_admin_client_ti6"
+  internal_elastic_admin_client: "platform_internal_elastic_admin_client_ti6"
 
 elasticsearch:
   priorityClass:
     create: true
-    name: "ems-platform-high-priority"
+    name: "platform-high-priority"
     value: 100000
     globalDefault: false
     description: "High priority for elasticsearch"
@@ -74,7 +74,7 @@ elasticsearch:
       memory: 3750Mi
   nodeSelector:
     aws:
-      karpenter-node: ems-platform
+      karpenter-node: platform
     onprem: {}
     default: {}
   tolerations: []
@@ -119,7 +119,7 @@ certificates:
     duration: "8760h"
     renewBefore: "168h"
     dnsNames:
-      - elastic.ems.example.local
+      - elastic.platform.example.local
       - elastic
       - elastic-headless
       - elastic.svc.cluster.local
@@ -138,13 +138,13 @@ certificates:
   secretName: elastic-tls-secret
   isCA: false
   dnsNames:
-    - elastic.ems.example.local
+    - elastic.platform.example.local
     - elastic-headless
     - elastic
     - elastic.svc.cluster.local
   subject:
     organizations:
-      - ems-platform
+      - platform
   privateKey:
     algorithm: RSA
     encoding: PKCS1

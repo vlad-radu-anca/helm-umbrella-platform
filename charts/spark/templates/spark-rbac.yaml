@@ -1,6 +1,6 @@
 {{- $saName := "" }}
 {{- if eq (include "platform" .) "aws" }}
-  {{- $saName = "ems-platform-sparkserviceaccount" }}
+  {{- $saName = "platform-sparkserviceaccount" }}
 {{- else }}
   {{- $saName = "sparkserviceaccount" }}
 {{- end }}
@@ -10,7 +10,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ $saName }}
-  namespace: ems-platform
+  namespace: platform
   {{- if eq (include "platform" .) "aws" }}
   annotations:
     eks.amazonaws.com/role-arn: "{{ .Values.secrets_store_csi_role_arn }}"

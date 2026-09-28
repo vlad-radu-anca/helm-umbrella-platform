@@ -44,7 +44,7 @@ spec:
           capabilities:
             add: ["NET_ADMIN"]
       {{- end }}
-      priorityClassName: ems-platform-medium-priority
+      priorityClassName: platform-medium-priority
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.sftp.image.repository }}:{{ .Values.sftp.image.tag }}"

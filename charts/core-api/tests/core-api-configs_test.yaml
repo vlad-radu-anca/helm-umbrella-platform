@@ -17,12 +17,12 @@ tests:
           diesel_wiki_header: "true"
           sftp_ip: "192.168.1.100"
           diesel_secret: "test-secret-min16chars"
-          ems_client_secret: "ems-secret-16chars"
+          platform_client_secret: "platform-secret-16chars"
           TOCUrlBase: "http://toc:7001"
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -45,12 +45,12 @@ tests:
           diesel_wiki_header: "true"
           sftp_ip: "192.168.1.100"
           diesel_secret: "test-secret-min16chars"
-          ems_client_secret: "ems-secret-16chars"
+          platform_client_secret: "platform-secret-16chars"
           TOCUrlBase: "http://toc:7001"
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -81,7 +81,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -99,7 +99,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -118,7 +118,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -137,7 +137,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -155,7 +155,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -173,7 +173,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -191,7 +191,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -209,7 +209,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -217,23 +217,23 @@ tests:
           path: data.DIESEL_SECRET
           value: "my-secret-key-16chars"
 
-  - it: should set EMS_CLIENT_SECRET from values
+  - it: should set PLATFORM_CLIENT_SECRET from values
     documentIndex: 0
     set:
       platform: onprem
       coreApi:
         data:
-          ems_client_secret: "ems-secret-16chars"
+          platform_client_secret: "platform-secret-16chars"
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
       - equal:
-          path: data.EMS_CLIENT_SECRET
-          value: "ems-secret-16chars"
+          path: data.PLATFORM_CLIENT_SECRET
+          value: "platform-secret-16chars"
 
   - it: should set POSTGRES_URL with correct format
     documentIndex: 0
@@ -257,7 +257,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak-onprem/auth"
     asserts:
@@ -272,7 +272,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           aws: "http://keycloak-aws:8080/auth"
     asserts:
@@ -287,7 +287,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -302,7 +302,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -317,7 +317,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -335,7 +335,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -410,7 +410,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -435,7 +435,7 @@ tests:
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -456,11 +456,11 @@ tests:
       coreApi:
         data:
           diesel_secret: "1234567890123456"
-          ems_client_secret: "abcdefghij123456"
+          platform_client_secret: "abcdefghij123456"
       ConnectionUrls:
         pgDb:
           host: "postgresql"
-          dbname: "ems-platform"
+          dbname: "platform"
         keycloak:
           onprem: "http://keycloak/auth"
     asserts:
@@ -468,5 +468,5 @@ tests:
           path: data.DIESEL_SECRET
           value: "1234567890123456"
       - equal:
-          path: data.EMS_CLIENT_SECRET
+          path: data.PLATFORM_CLIENT_SECRET
           value: "abcdefghij123456"

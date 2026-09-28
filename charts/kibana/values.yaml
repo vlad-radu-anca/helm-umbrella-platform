@@ -1,5 +1,5 @@
 kibana:
-  endpoint: ems.example.local
+  endpoint: platform.example.local
   elasticsearchFullname: ""
   image: docker.elastic.co/kibana/kibana
   tag: "7.17.29"
@@ -18,14 +18,14 @@ kibana:
     className: "nginx"
     annotations: {}
     hosts:
-    - host: kibana.devems122.example.local
+    - host: kibana.dev122.example.local
       paths:
       - path: /
         pathType: ImplementationSpecific
     tls:
     - secretName: kibana-tls-secret
       hosts:
-      - kibana.devems122.example.local
+      - kibana.dev122.example.local
   
   resources:
     limits:
@@ -37,7 +37,7 @@ kibana:
   
   nodeSelector:
     aws:
-      karpenter-node: ems-platform-autoscalernode-small
+      karpenter-node: platform-autoscalernode-small
     onprem: {}
     default:
   tolerations: []
@@ -69,7 +69,7 @@ kibana:
   kibana_port: "5601"
   waitfor_url: http://kibana:5601/login
   secrets:
-    internal_elastic_admin_client: "ems-platform_internal_elastic_admin_client_xlv"
+    internal_elastic_admin_client: "platform_internal_elastic_admin_client_xlv"
 
 curlImage:
   repo: curlimages/curl
@@ -84,7 +84,7 @@ certificate:
   renewBefore: 168h
   subject:
     organizations:
-      - ems-platform
+      - platform
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer

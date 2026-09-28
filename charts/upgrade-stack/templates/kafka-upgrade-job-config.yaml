@@ -59,20 +59,20 @@ data:
       secret_access_key: {{ .Values.aws.secretAccessKey | quote }}
       blue:
         eksCluster: {{ .Values.aws.clusters.blue.eksCluster | quote }}
-        ems-platformNamespace: "ems-platform"
+        platformNamespace: "platform"
         kafkaNamespace: "kafka"
         region: {{ .Values.aws.clusters.blue.region | quote }}
       green:
         eksCluster: {{ .Values.aws.clusters.green.eksCluster | quote }}
-        ems-platformNamespace: "ems-platform"
+        platformNamespace: "platform"
         kafkaNamespace: "kafka"
         region: {{ .Values.aws.clusters.green.region | quote }}
 
     helmReleases:
       blue:
-        ems-platformReleaseName: {{ (index .Values.helmReleases.blue "emsPlatformReleaseName") | quote }}
-        ems-platformChartName: {{ (index .Values.helmReleases.blue "emsPlatformChartName") | quote }}
-        ems-platformChartRepo: {{ (index .Values.helmReleases.blue "emsPlatformChartRepo") | quote }}
+        platformReleaseName: {{ (index .Values.helmReleases.blue "platformReleaseName") | quote }}
+        platformChartName: {{ (index .Values.helmReleases.blue "platformChartName") | quote }}
+        platformChartRepo: {{ (index .Values.helmReleases.blue "platformChartRepo") | quote }}
         kafkaReleaseName: {{ .Values.helmReleases.blue.kafkaReleaseName | quote }}
         kafkaChartName: {{ .Values.helmReleases.blue.kafkaChartName | quote }}
         kafkaChartRepo: {{ .Values.helmReleases.blue.kafkaChartRepo | quote }}
@@ -83,9 +83,9 @@ data:
         ngfDevicesChartName: {{ .Values.helmReleases.blue.ngfDevicesChartName | quote }}
         ngfDevicesChartRepo: {{ .Values.helmReleases.blue.ngfDevicesChartRepo | quote }}
       green:
-        ems-platformReleaseName: {{ (index .Values.helmReleases.green "emsPlatformReleaseName") | quote }}
-        ems-platformChartName: {{ (index .Values.helmReleases.green "emsPlatformChartName") | quote }}
-        ems-platformChartRepo: {{ (index .Values.helmReleases.green "emsPlatformChartRepo") | quote }}
+        platformReleaseName: {{ (index .Values.helmReleases.green "platformReleaseName") | quote }}
+        platformChartName: {{ (index .Values.helmReleases.green "platformChartName") | quote }}
+        platformChartRepo: {{ (index .Values.helmReleases.green "platformChartRepo") | quote }}
         kafkaReleaseName: {{ .Values.helmReleases.green.kafkaReleaseName | quote }}
         kafkaChartName: {{ .Values.helmReleases.green.kafkaChartName | quote }}
         kafkaChartRepo: {{ .Values.helmReleases.green.kafkaChartRepo | quote }}
@@ -111,9 +111,9 @@ data:
       connectionTimeout: {{ .Values.loggerElasticClient.connectionTimeout }}
       idxName: {{ .Values.loggerElasticClient.idxName | quote }}
 
-    emsUIAppConfigMap:
-      name: "ems-ui-app-config"
+    webUIAppConfigMap:
+      name: "web-ui-app-config"
       key: "app.json"
-      bannerKey: "emsUpgradeMessage"
+      bannerKey: "platformUpgradeMessage"
       bannerValue: "An application upgrade is in progress. Please refrain from performing configuration operations."
 {{- end }}

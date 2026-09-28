@@ -16,7 +16,7 @@ spcSupport:
   address: ""
 sseEnbSnmpProxyEnabled: false
 enabled: true
-image: ghcr.io/vlad-radu-anca/ems-snmpproxy
+image: ghcr.io/vlad-radu-anca/platform-snmpproxy
 tag: latest
 pullPolicy: Always
 replicaCount: 1

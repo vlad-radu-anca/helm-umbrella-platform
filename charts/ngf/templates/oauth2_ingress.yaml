@@ -9,7 +9,7 @@ apiVersion: extensions/v1beta1
 {{- end }}
 kind: Ingress
 metadata:
-  name: ems-platform-oauth2-proxy
+  name: platform-oauth2-proxy
   {{- with .Values.oauth2Proxy.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

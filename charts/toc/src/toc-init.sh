@@ -1,8 +1,8 @@
 #!/bin/sh
 
-base_path="/opt/ems-platform/config/users"
-username_key="ems-username"
-password_key="ems-password"
+base_path="/opt/platform/config/users"
+username_key="platform-username"
+password_key="platform-password"
 
 # Read secret contents
 username=$(cat "$base_path/$username_key")

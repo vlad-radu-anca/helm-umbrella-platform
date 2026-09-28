@@ -1,5 +1,5 @@
 platform: onprem
-endpoint: "ems.example.local"
+endpoint: "platform.example.local"
 cpeSupport:
   enabled: true
 image: ghcr.io/vlad-radu-anca/genieacs-gui
@@ -34,7 +34,7 @@ certificate:
   renewBefore: 168h
   subject:
     organizations:
-      - ems-platform
+      - platform
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer

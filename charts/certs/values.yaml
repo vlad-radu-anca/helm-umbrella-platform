@@ -1,8 +1,8 @@
 platform: onprem
-brandName: "ems-platform"
+brandName: "platform"
 devMode: false
-emsuiSubdomain: "emsui"
-endpoint: "ems.example.local"
+webuiSubdomain: "webui"
+endpoint: "platform.example.local"
 cpeSupport:
   enabled: false
 enbSupport:
@@ -28,13 +28,13 @@ cronJobs:
     backup_enabled: false
     image: postgres
     tag: "15.2"
-    local_path: "/opt/ems-platform/backup/postgres-snapshot"
+    local_path: "/opt/platform/backup/postgres-snapshot"
     recover_days: 5
     node_name: master-1
 job:
   pg_roles:
     enabled: false
-    image: ghcr.io/vlad-radu-anca/ems-insert-roles
+    image: ghcr.io/vlad-radu-anca/platform-insert-roles
     tag: latest
     pullPolicy: Always
   grafana:
@@ -69,6 +69,6 @@ initContainers:
     tag: 8.0.12-debian-12-r0
 awsConfig:
   aws_mode: false
-  namespace: "ems-platform"
+  namespace: "platform"
 secrets:
   internal_keycloak_core_api_client: "internal-keycloak-core-api-client"

@@ -5,7 +5,7 @@ metadata:
   name: swagger
 spec:
   parentRefs:
-  - name: ems
+  - name: platform
   hostnames:
     - {{ include "ngf.hostname" . }}
   rules:

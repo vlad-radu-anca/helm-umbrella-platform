@@ -2,8 +2,8 @@ platform: onprem #or aws
 kafkaTopic:
   enabled: true
   namespace: kafka
-  cluster: ems-platform-kafka-cluster
-  prefix: ems-platform
+  cluster: platform-kafka-cluster
+  prefix: platform
   installOperator: false  
   defaultConfig:
     partitions: 3
@@ -22,7 +22,7 @@ kafkaTopic:
     - name: invgnb-events
     - name: tus-file-uploaded
     - name: tus-file-uploaded-notification
-    - name: ems-platform-ec-errors
+    - name: platform-ec-errors
 
 
 kafkaCluster:
@@ -34,16 +34,16 @@ kafkaCluster:
 #    internet: false
 #    auth: tls
 #    san: 
-#    - kafka-bootstrap.pvems.example.com
+#    - kafka-bootstrap.pv.example.com
     annotations:
-#      external-dns.alpha.kubernetes.io/hostname: "kafka-bootstrap.pvems.example.com"
+#      external-dns.alpha.kubernetes.io/hostname: "kafka-bootstrap.pv.example.com"
   # Metadata##
   namespace: kafka
-  clusterName: ems-platform-kafka-cluster
+  clusterName: platform-kafka-cluster
 
   # Node Pool (KafkaNodePool)
   nodePool:
-    name: ems-platform-kafka-controller-broker
+    name: platform-kafka-controller-broker
     roles:
       - controller
       - broker
@@ -106,7 +106,7 @@ kafkaCluster:
   topicHook:
     jobName: wait-for-topic-operator
     containerName: check-topic-operator
-    readinessProbeURL: http://strimzi-topic-operator.ems-platform.svc.cluster.local:8080/ready
+    readinessProbeURL: http://strimzi-topic-operator.platform.svc.cluster.local:8080/ready
     hook: post-install
     hookWeight: 1
     hookDeletePolicy: hook-succeeded

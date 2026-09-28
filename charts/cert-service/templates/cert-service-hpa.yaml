@@ -1,0 +1,37 @@
+{{- if .Values.smallcell_support.enabled }}
+{{- if .Values.certservice.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "certservice.fullname" . }}
+  labels:
+    app: {{ template "certservice.name" . }}
+    chart: {{ template "certservice.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cert-service
+  minReplicas: {{ .Values.certservice.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.certservice.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.certservice.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.certservice.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.certservice.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.certservice.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+{{- end }}

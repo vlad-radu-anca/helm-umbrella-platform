@@ -31,27 +31,27 @@ spec:
             - name: init-client-application-config
               mountPath: /app/config/application.yaml
               subPath: application.yaml
-            - name: pg-ems-platform-perms-client
-              mountPath: "/opt/ems-platform/config/postgres"
+            - name: pg-platform-perms-client
+              mountPath: "/opt/platform/config/postgres"
               readOnly: true
             - name: external-keycloak-client-secrets
-              mountPath: "/opt/ems-platform/config/keycloak/admin"
+              mountPath: "/opt/platform/config/keycloak/admin"
               readOnly: true
             - name: smtp-client-secrets
-              mountPath: "/opt/ems-platform/config/smtp"
+              mountPath: "/opt/platform/config/smtp"
               readOnly: true
             - name: keycloak-core-api-secrets
-              mountPath: "/opt/ems-platform/config/keycloak/core-api"
+              mountPath: "/opt/platform/config/keycloak/core-api"
               readOnly: true
             - name: keycloak-toc-secrets
-              mountPath: "/opt/ems-platform/config/keycloak/toc"
+              mountPath: "/opt/platform/config/keycloak/toc"
               readOnly: true
           resources: {}
       volumes:
         - name: init-client-application-config
           configMap:
             name: init-client-application-config
-        - name: pg-ems-platform-perms-client
+        - name: pg-platform-perms-client
           {{- if eq .Values.platform "aws" }}
           csi:
             driver: secrets-store.csi.k8s.io

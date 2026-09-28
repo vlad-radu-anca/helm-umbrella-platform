@@ -80,22 +80,22 @@ spec:
             - name: UPGRADE_TRANSFORMS_MONGOCLIENT_TOC_SOURCE_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ if eq (include "platform" .) "aws" }}mongo-emsdb-client{{ else }}external-mongo-emsdb-secret{{ end }}
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-appdb-client{{ else }}external-mongo-appdb-secret{{ end }}
                   key: {{ .Values.envFromSecrets.mongo.usernameKey }}
             - name: UPGRADE_TRANSFORMS_MONGOCLIENT_TOC_SOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ if eq (include "platform" .) "aws" }}mongo-emsdb-client{{ else }}external-mongo-emsdb-secret{{ end }}
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-appdb-client{{ else }}external-mongo-appdb-secret{{ end }}
                   key: {{ .Values.envFromSecrets.mongo.passwordKey }}
             - name: UPGRADE_TRANSFORMS_MONGOCLIENT_TOC_TARGET_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ if eq (include "platform" .) "aws" }}mongo-emsdb-client{{ else }}external-mongo-emsdb-secret{{ end }}
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-appdb-client{{ else }}external-mongo-appdb-secret{{ end }}
                   key: {{ .Values.envFromSecrets.mongo.usernameKey }}
             - name: UPGRADE_TRANSFORMS_MONGOCLIENT_TOC_TARGET_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ if eq (include "platform" .) "aws" }}mongo-emsdb-client{{ else }}external-mongo-emsdb-secret{{ end }}
+                  name: {{ if eq (include "platform" .) "aws" }}mongo-appdb-client{{ else }}external-mongo-appdb-secret{{ end }}
                   key: {{ .Values.envFromSecrets.mongo.passwordKey }}
           volumeMounts:
             - name: app-config
@@ -103,21 +103,21 @@ spec:
               subPath: application.yaml
             {{- if .Values.mounts.elastic }}
             - name: elastic-secrets
-              mountPath: /opt/ems-platform/config/elastic
+              mountPath: /opt/platform/config/elastic
               readOnly: true
             {{- end }}
             {{- if .Values.mounts.mongo }}
             - name: mongo-secrets
-              mountPath: /opt/ems-platform/config/mongo
+              mountPath: /opt/platform/config/mongo
               readOnly: true
             - name: mongo-spckpi-secrets
-              mountPath: /opt/ems-platform/config/mongo-spckpi
+              mountPath: /opt/platform/config/mongo-spckpi
               readOnly: true
             - name: mongo-spc-secrets
-              mountPath: /opt/ems-platform/config/mongo-spc
+              mountPath: /opt/platform/config/mongo-spc
               readOnly: true
             - name: mongo-admin-secrets
-              mountPath: /opt/ems-platform/config/mongo-admin
+              mountPath: /opt/platform/config/mongo-admin
               readOnly: true
             {{- end }}
           resources:
@@ -146,10 +146,10 @@ spec:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: mongoatlas-emsdb-secrets
+              secretProviderClass: mongoatlas-appdb-secrets
           {{- else }}
           secret:
-            secretName: external-mongo-emsdb-secret
+            secretName: external-mongo-appdb-secret
           {{- end }}
         - name: mongo-admin-secrets
           {{- if eq (include "platform" .) "aws" }}

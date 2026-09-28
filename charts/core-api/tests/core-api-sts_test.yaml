@@ -144,7 +144,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.priorityClassName
-          value: ems-platform-high-priority
+          value: platform-high-priority
 
   - it: should have correct init containers for aws platform
     set:
@@ -320,7 +320,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].startupProbe.httpGet.path
-          value: /diesel/rest/v1/ems/local/started
+          value: /diesel/rest/v1/platform/local/started
       - equal:
           path: spec.template.spec.containers[0].startupProbe.httpGet.port
           value: 9000

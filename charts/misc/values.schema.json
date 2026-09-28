@@ -8,7 +8,7 @@
       "additionalProperties": true
     },
     "endpoint": { "type": "string" },
-    "emsui_subdomain": { "type": "string" },
+    "webui_subdomain": { "type": "string" },
     "platform": {
       "type": "string",
       "enum": ["onprem", "aws"]
@@ -172,7 +172,7 @@
   },
   "required": [
     "endpoint",
-    "emsui_subdomain",
+    "webui_subdomain",
     "platform",
     "dev_mode",
     "BRAND_NAME",

@@ -246,9 +246,9 @@
               "type": "string",
               "description": "Diesel application secret key"
             },
-            "ems_client_secret": {
+            "platform_client_secret": {
               "type": "string",
-              "description": "EMS client secret"
+              "description": "Platform client secret"
             },
             "TOCUrlBase": {
               "type": "string",

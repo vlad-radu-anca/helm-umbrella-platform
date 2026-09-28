@@ -2,6 +2,9 @@ name: Update Umbrella Stack Dependencies
 
 on:
   workflow_call:
+  # Manual trigger, for publishing platform-stack without a chart change first,
+  # for example after a registry was reset or the umbrella was never published.
+  workflow_dispatch:
 
 jobs:
   update-umbrella-dependencies:
@@ -38,6 +41,14 @@ jobs:
         run: |
           # Ensure we have the latest state of main
           git pull origin main
+
+          # A manual run means "publish the umbrella now", so skip change detection.
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "has_chart_updates=true" >> $GITHUB_OUTPUT
+            echo "updated_charts=manual" >> $GITHUB_OUTPUT
+            echo "Manual run: publishing the umbrella chart regardless of changes"
+            exit 0
+          fi
           
           # Get the list of modified Chart.yaml files from the version bump commit.
           # The umbrella's own Chart.yaml counts too: a dependency pin change must
@@ -50,7 +61,7 @@ jobs:
             echo "$CHANGED_FILES"
 
             # Extract chart names - keep as multi-line
-            CHART_NAMES=$(echo "$CHANGED_FILES" | grep -v 'ems-platform-stack' | sed 's|charts/||g' | sed 's|/Chart.yaml||g')
+            CHART_NAMES=$(echo "$CHANGED_FILES" | grep -v 'platform-stack' | sed 's|charts/||g' | sed 's|/Chart.yaml||g')
             
             # Use delimiter for multi-line output
             echo "updated_charts<<EOF" >> $GITHUB_OUTPUT
@@ -69,7 +80,7 @@ jobs:
 
       - name: Verify all umbrella dependencies exist in registry
         if: steps.detect-updated-charts.outputs.has_chart_updates == 'true'
-        working-directory: ./charts/ems-platform-stack
+        working-directory: ./charts/platform-stack
         run: |
           echo "🔎 Checking that every pinned dependency is available in GHCR..."
 
@@ -96,14 +107,14 @@ jobs:
           done < <(yq eval '.dependencies[] | .name + "|" + .version + "|" + .repository' Chart.yaml)
 
           if [[ ${#MISSING[@]} -gt 0 ]]; then
-            echo "::error file=charts/ems-platform-stack/Chart.yaml::Umbrella dependencies missing from registry: ${MISSING[*]}. Publish them (Publish Helm Chart to OCI -> Run workflow) or fix the pinned versions."
+            echo "::error file=charts/platform-stack/Chart.yaml::Umbrella dependencies missing from registry: ${MISSING[*]}. Publish them (Publish Helm Chart to OCI -> Run workflow) or fix the pinned versions."
             exit 1
           fi
           echo "✅ All dependencies resolvable"
 
       - name: Update umbrella chart dependencies with retry
         if: steps.detect-updated-charts.outputs.has_chart_updates == 'true'
-        working-directory: ./charts/ems-platform-stack
+        working-directory: ./charts/platform-stack
         run: |
           echo "🔄 Updating helm dependencies for umbrella chart..."
 
@@ -136,9 +147,9 @@ jobs:
           echo "🔨 Building dependencies for umbrella chart..."
           helm dependency build
           
-          echo "🧪 Rendering umbrella chart (ems-platform-stack) with helm template..."
-          helm template ems-platform-stack . || {
-            echo "::error file=ems-platform-stack::helm template failed for umbrella chart"
+          echo "🧪 Rendering umbrella chart (platform-stack) with helm template..."
+          helm template platform-stack . || {
+            echo "::error file=platform-stack::helm template failed for umbrella chart"
             exit 1
           }
           
@@ -147,7 +158,7 @@ jobs:
       - name: Check for changes in dependency files
         if: steps.detect-updated-charts.outputs.has_chart_updates == 'true'
         id: check-changes
-        working-directory: ./charts/ems-platform-stack
+        working-directory: ./charts/platform-stack
         run: |
           echo "🔍 Checking git status for dependency files..."
           git status --porcelain .
@@ -211,12 +222,12 @@ jobs:
       - name: Commit and push dependency updates
         if: steps.detect-updated-charts.outputs.has_chart_updates == 'true' && steps.check-changes.outputs.has_changes == 'true'
         run: |
-          git add charts/ems-platform-stack/Chart.lock charts/ems-platform-stack/charts/
+          git add charts/platform-stack/Chart.lock charts/platform-stack/charts/
           
           # Get the updated charts from the previous commit
           UPDATED_CHARTS="${{ steps.detect-updated-charts.outputs.updated_charts }}"
           
-          git commit -m "chore(ems-platform-stack): update helm dependencies after chart releases
+          git commit -m "chore(platform-stack): update helm dependencies after chart releases
 
           Updated umbrella chart dependencies following version bumps:
           $(echo "$UPDATED_CHARTS" | tr ' ' '\n' | sed 's/^/- /')
@@ -250,14 +261,14 @@ jobs:
           done
 
       - name: Set up helm for publishing
-        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true' && steps.check-changes.outputs.has_changes == 'true'
+        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true' && (steps.check-changes.outputs.has_changes == 'true' || github.event_name == 'workflow_dispatch')
         uses: azure/setup-helm@v5.0.1
         with:
             version: 'v3.12.0'
 
       - name: Publish updated umbrella chart
-        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true' && steps.check-changes.outputs.has_changes == 'true'
-        working-directory: ./charts/ems-platform-stack
+        if: steps.detect-updated-charts.outputs.has_chart_updates == 'true' && (steps.check-changes.outputs.has_changes == 'true' || github.event_name == 'workflow_dispatch')
+        working-directory: ./charts/platform-stack
         run: |
           echo "📦 Publishing updated umbrella chart to OCI registry..."
           

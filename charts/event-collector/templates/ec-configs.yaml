@@ -59,38 +59,38 @@ data:
     logger.netconfapicodec.name = org.broadband_forum.obbaa.netconf.api.codec.v2
     logger.netconfapicodec.level = INFO
 
-    logger.ems.name = ems.platform
-    logger.ems.level = DEBUG
+    logger.platform.name = platform
+    logger.platform.level = DEBUG
 
-    logger.emsCPE.name = ems.ems.collector.cpe
-    logger.emsCPE.level = WARN
+    logger.cpe.name = platform.collector.cpe
+    logger.cpe.level = WARN
 
-    logger.emsENB.name = ems.ems.collector.enb
-    logger.emsENB.level = WARN
+    logger.enb.name = platform.collector.enb
+    logger.enb.level = WARN
 
-    logger.emsES.name = ems.ems.collector.cpe.AcsElkSender
-    logger.emsES.level = TRACE
+    logger.es.name = platform.collector.cpe.AcsElkSender
+    logger.es.level = TRACE
 
-    logger.emsSmallCell.name = ems.ems.collector.smallcell
-    logger.emsSmallCell.level= TRACE
+    logger.smallcell.name = platform.collector.smallcell
+    logger.smallcell.level= TRACE
 
-    logger.emsSmallCellFM.name = ems.ems.collector.smallcell.fm
-    logger.emsSmallCellFM.level = TRACE
+    logger.smallcellfm.name = platform.collector.smallcell.fm
+    logger.smallcellfm.level = TRACE
 
-    logger.emsSmallCellPM.name = ems.ems.collector.smallcell.pm
-    logger.emsSmallCellPM.level= TRACE
+    logger.smallcellpm.name = platform.collector.smallcell.pm
+    logger.smallcellpm.level= TRACE
 
-    logger.emsTOC.name = ems.ems.collector.toc
-    logger.emsTOC.level = TRACE
+    logger.toc.name = platform.collector.toc
+    logger.toc.level = TRACE
 
-    logger.emsSPC.name = ems.ems.collector.spc
-    logger.emsSPC.level= TRACE
+    logger.spc.name = platform.collector.spc
+    logger.spc.level= TRACE
 
-    logger.emsDisc.name = ems.ems.discovery
-    logger.emsDisc.level = WARN
+    logger.disc.name = platform.discovery
+    logger.disc.level = WARN
 
-    logger.emsEvents.name = ems.ems.eventstream
-    logger.emsEvents.level = TRACE
+    logger.events.name = platform.eventstream
+    logger.events.level = TRACE
 kind: ConfigMap
 metadata:
   name: {{ template "eventcollector.fullname" . }}-log-config

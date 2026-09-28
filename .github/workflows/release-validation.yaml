@@ -78,8 +78,8 @@ jobs:
         run: |
           echo "Running ct lint to validate chart structure and values.schema.json"
           for CHART in $(echo '${{ steps.set-charts.outputs.charts }}' | jq -r '.[]'); do
-            # Skip the umbrella chart (ems-platform-stack)
-            if [[ "$CHART" == "ems-platform-stack" ]]; then
+            # Skip the umbrella chart (platform-stack)
+            if [[ "$CHART" == "platform-stack" ]]; then
               echo "Skipping umbrella chart: $CHART"
               continue
             fi

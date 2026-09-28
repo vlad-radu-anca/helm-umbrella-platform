@@ -11,7 +11,7 @@ metadata:
     autoheal: "true"
     metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
   labels:
-    app: emsakka-local
+    app: akka-local
     {{- include "spark.labels" . | nindent 4 }}
 spec:
   type: LoadBalancer
@@ -47,7 +47,7 @@ metadata:
     metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
     {{- end }}
   labels:
-    app: emsakka-local
+    app: akka-local
     {{- include "spark.labels" . | nindent 4 }}
 spec:
   type:
@@ -93,7 +93,7 @@ metadata:
   annotations:
     autoheal: "true"
   labels:
-    app: emsakka-local
+    app: akka-local
     {{- include "spark.labels" . | nindent 4 }}
 spec:
   type: ClusterIP

@@ -4,14 +4,14 @@ kind: Deployment
 metadata:
   name: spark
   labels:
-    app: emsakka-local
+    app: akka-local
     {{- include "spark.labels" . | nindent 4 }}
 spec:
   replicas: {{ if .Values.spark.clusteringEnabled }}{{ .Values.spark.replicaCountClustering }}{{ else }}{{ .Values.spark.replicaCountNonClustering }}{{ end }}
   selector:
     matchLabels:
       lbtype: external
-      app: emsakka-local
+      app: akka-local
       {{- include "spark.selectorLabels" . | nindent 6 }}
   {{- if eq (include "platform" .) "aws" }}
   strategy:
@@ -28,10 +28,10 @@ spec:
       {{- end }}
       labels:
         lbtype: external
-        app: emsakka-local
+        app: akka-local
         {{- include "spark.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ if eq (include "platform" .) "aws" }}ems-platform-sparkserviceaccount{{ else }}sparkserviceaccount{{ end }}
+      serviceAccountName: {{ if eq (include "platform" .) "aws" }}platform-sparkserviceaccount{{ else }}sparkserviceaccount{{ end }}
       securityContext:
         fsGroup: {{ .Values.securityContext.fsGroup }}
         runAsUser: {{ .Values.securityContext.runAsUser }}
@@ -69,13 +69,13 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - >
-              while [[ $(curl -sw '%{http_code}' http://core-api:9000/diesel/rest/v1/ems/local/started -o /dev/null) -ne 200 ]]; do
+              while [[ $(curl -sw '%{http_code}' http://core-api:9000/diesel/rest/v1/platform/local/started -o /dev/null) -ne 200 ]]; do
                 sleep 5;
                 echo 'Waiting for core-api to be ready...';
               done;
               echo 'core-api is ready'
 
-      priorityClassName: ems-platform-high-priority
+      priorityClassName: platform-high-priority
 
       containers:
         - name: spark
@@ -98,11 +98,11 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: "metadata.labels['app']"
-            - name: SPARK_EMS_SERIALNUMBER
+            - name: SPARK_PLATFORM_SERIALNUMBER
               valueFrom:
                 secretKeyRef:
-                  name: ems-serialnumber
-                  key: EMS_SERIALNUMBER
+                  name: platform-serialnumber
+                  key: PLATFORM_SERIALNUMBER
             - name: SPARK_SPC_SERIALNUMBER
               valueFrom:
                 secretKeyRef:
@@ -165,20 +165,20 @@ spec:
               name: spark-log-config
             - mountPath: /opt/spark/logconf
               name: spark-log-config
-            - mountPath: /var/ems-config/ems-config.json
-              name: ems-config
-              subPath: ems-config.json
+            - mountPath: /var/platform-config/platform-config.json
+              name: platform-config
+              subPath: platform-config.json
             - name: elastic-client-secrets
-              mountPath: "/opt/ems-platform/config/elastic"
+              mountPath: "/opt/platform/config/elastic"
               readOnly: true
             {{- with .Values.spark.secret }}
             {{- if .identity }}
-            - mountPath: /opt/ems-platform/config/ems/tls/identity
+            - mountPath: /opt/platform/config/platform/tls/identity
               name: spark-identity-secret
               readOnly: true
             {{- end }}
             {{- if .trust }}
-            - mountPath: /opt/ems-platform/config/ems/tls/trust
+            - mountPath: /opt/platform/config/platform/tls/trust
               name: spark-trust-secret
               readOnly: true
             {{- end }}
@@ -191,9 +191,9 @@ spec:
           configMap:
             name: spark-log-config
             defaultMode: 0644
-        - name: ems-config
+        - name: platform-config
           configMap:
-            name: ems-config
+            name: platform-config
             defaultMode: 0644
         {{- if eq (include "platform" .) "aws" }}
         - name: elastic-client-secrets

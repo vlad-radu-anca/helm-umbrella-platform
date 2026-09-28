@@ -11,7 +11,7 @@ data:
       devMode: {{ .Values.dev_mode }}
       useLocalFrontendUrl: false
       globalEndpoint: "{{ .Values.endpoint }}"
-      globalEmsUiSubdomain: "{{ .Values.emsui_subdomain }}"
+      globalWebUiSubdomain: "{{ .Values.webui_subdomain }}"
       brandName: "{{ .Values.BRAND_NAME }}"
       permissionVersion: "5.0"
 

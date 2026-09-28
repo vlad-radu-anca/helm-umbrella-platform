@@ -2,7 +2,7 @@ platform: onprem  # or "onprem"
 
 loadBalancerIP: "0.0.0.0"
 
-endpoint: ems.example.local
+endpoint: platform.example.local
 
 dev_mode: false
 
@@ -15,7 +15,7 @@ certificate:
     - core-api
   subject:
     organizations:
-      - ems-platform
+      - platform
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer
@@ -46,14 +46,14 @@ coreApi:
     diesel_wiki_header: ""
     sftp_ip: "0.0.0.0"
     diesel_secret: ""  # Set via --set or CI/CD secrets
-    ems_client_secret: ""  # Set via --set or CI/CD secrets
+    platform_client_secret: ""  # Set via --set or CI/CD secrets
     TOCUrlBase: http://toc-headless:7001
     elastic_auth: ""  # Set via --set: base64("elastic:<password>")
     elastic_password: ""  # Set via --set or CI/CD secrets
     elastic_username: elastic
     elasticsearch_password: ""  # Set via --set or CI/CD secrets
     elasticsearch_username: elastic
-  image: vlad-radu-anca/ems-core-api
+  image: vlad-radu-anca/platform-core-api
   tag: 5.0.latest
   pullPolicy: Always
   replicaCount: 1
@@ -99,16 +99,16 @@ coreApi:
 
   nodeSelector:
     aws:
-      karpenter-node: ems-platform
+      karpenter-node: platform
     onprem: {}
     default: {}
     tolerations: []
     affinity: {}
   secrets:
-    internal_keycloak_core_api_client: "ems-platform_internal_keycloak_core_api_client_xlv"
-    external_keycloak_admin_client: "ems-platform_external_keycloak_admin_client_xlv"
-    internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
-    internal_pg_client: "ems-platform_internal_pg_client_xlv"
+    internal_keycloak_core_api_client: "platform_internal_keycloak_core_api_client_xlv"
+    external_keycloak_admin_client: "platform_external_keycloak_admin_client_xlv"
+    internal_elastic_client: "platform_internal_elastic_client_xlv"
+    internal_pg_client: "platform_internal_pg_client_xlv"
 
 
 ConnectionUrls:
@@ -124,7 +124,7 @@ ConnectionUrls:
     onprem:
       uri: mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0
   pgDb:
-    dbname: ems-platform
+    dbname: platform
     host: postgresql-hl
     port: 5432
 
@@ -137,7 +137,7 @@ rbac:
   serviceAccountName: dieselserviceaccount
   roleName: dieselrole
   roleBindingName: dieselrolebinding
-  namespace: ems-platform
+  namespace: platform
 
 initContainers:
   curlImage:

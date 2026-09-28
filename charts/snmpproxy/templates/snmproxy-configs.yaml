@@ -1,7 +1,7 @@
 ---
 apiVersion: v1
 data:
-  ems-config.json: |+
+  platform-config.json: |+
     {
       "description": "this is the reference file for environment properties",
       "ENV_NAME": "local",
@@ -15,7 +15,7 @@ data:
         "url": "{{ .Values.ConnectionUrls.elastic }}",
         "Authorization": "Basic {{ .Values.elasticAuthBase64 }}"
       },
-      "ems-collector": {
+      "platform-collector": {
         "ACS_ENABLED": "{{ .Values.cpeSupport.enabled }}",
         "ENB_ENABLED": "{{ .Values.enbSupport.enabled }}",
         "SMALLCELL_ENABLED": "{{ .Values.smallcellSupport.enabled }}",
@@ -36,17 +36,17 @@ data:
         "SPARK_POLLING_INTERVAL": 30,
         "SPARK_INVENTORY_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest",
         "SPARK_ACS_URL": "http://genieacsnbi.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:7557/devices",
-        "ACS_META_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/meta/query?deviceType=cpe",
+        "ACS_META_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/platform/local/meta/query?deviceType=cpe",
         "SPARK_ELASTIC_URL": [
           "{{ .Values.ConnectionUrls.elastic }}/"
         ],
-        "ENB_INVENTORY_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/device/enb",
-        "ENB_META_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/meta/query?deviceType=enb",
+        "ENB_INVENTORY_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/platform/local/device/enb",
+        "ENB_META_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/platform/local/meta/query?deviceType=enb",
         "ENB_ELASTIC_URL": [
           "{{ .Values.ConnectionUrls.elastic }}/"
         ],
         "SMALLCELL_KAFKA": {
-          "bootstrap.servers" : "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+          "bootstrap.servers" : "platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
         },
         "SNMP_HTTP_READ_TIMEOUT_SECS" : 5,
         "ENB_HTTP_CONN_TIMEOUT_SECS"  : 5,
@@ -54,7 +54,7 @@ data:
         "INV_HTTP_CONN_TIMEOUT_SECS"  : 10,
         "INV_HTTP_READ_TIMEOUT_SECS"  : 30,
         "ACS_HTTP_READ_TIMEOUT_SECS"  : 15,
-        "ENB_EVENTS_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/device/",
+        "ENB_EVENTS_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/platform/local/device/",
         "ENB_RECEIVER_PROPERTIES": {
         },
         "ACS_RECEIVER_PROPERTIES": {
@@ -86,26 +86,26 @@ data:
            }
          ]
       },
-      "ems-discovery": {
-        "EVENTS_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/device/",
-        "CONFIG_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/react/ems.snmprest.discovery.config",
-        "WEBHOOK_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/ems/local/ems-discovery/foundEnb"
+      "platform-discovery": {
+        "EVENTS_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/platform/local/device/",
+        "CONFIG_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/react/platform.snmprest.discovery.config",
+        "WEBHOOK_URL": "http://core-api.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:9000/diesel/rest/v1/platform/local/platform-discovery/foundEnb"
       },
-      "ems-gateway": {
+      "platform-gateway": {
         "REPORT_TOKEN": "{{ .Values.reportToken }}",
         "BULK_GROUP_BY": 100,
         "BULK_GROUP_LIMIT": 1000
       },
-      "ems-notifications": {
+      "platform-notifications": {
         "SSE_NOTIFICATION_WORKER": 5,
         "SSE_SUBSCRIPTION_WORKER": 5,
         "SSE_ENB_EVENT_WORKER": 2,
         "SSE_ENB_SNMP_PROXY_ENABLED": "{{ .Values.sseEnbSnmpProxyEnabled }}",
         "SSE_ENB_SNMP_PROXY_URL": "http://snmpproxy.{{ template "snmpproxy.Namespace" . }}.svc.cluster.local:16162/rest/v1/notification"
       },
-      "ems-ui": {
+      "web-ui": {
       },
-      "ems-snmpproxy": {
+      "platform-snmpproxy": {
         "SNMPPROXY_HOST_NAME": "0.0.0.0",
         "SNMPPROXY_AGENT_PORT": {{ .Values.snmpproxy_agent_port }},
         "SNMPPROXY_AGENT_ENGINEID": "80:8F:82:01:C0:A8:05:1C",
@@ -121,7 +121,7 @@ data:
     }
 kind: ConfigMap
 metadata:
-  name: ems-config
+  name: platform-config
 ---
 {{- if .Values.enbSupport.enabled }}
 apiVersion: v1
@@ -135,8 +135,8 @@ data:
     log4j.appender.console.layout.ConversionPattern=%d{MM/dd HH:mm:ss,SSS} %-3p [%-15.15t] %c{2} [%4L]: %m%n
     # Settings to quiet third party logs that are too verbose
     log4j.logger.org.apache.http=ERROR
-    log4j.logger.ems=INFO
-    log4j.logger.ems.ems.snmp.proxy=INFO
+    log4j.logger.platform=INFO
+    log4j.logger.platform.snmp.proxy=INFO
     log4j.logger.org.snmp4j=INFO
 kind: ConfigMap
 metadata:

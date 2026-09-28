@@ -1,7 +1,7 @@
 swagger:
   smallcell_support: # small cell 5g support
     enabled: true
-  image: vlad-radu-anca/ems-swagger
+  image: vlad-radu-anca/platform-swagger
   tag: 5.0.latest
   pullPolicy: Always
   replicaCount: 2
@@ -27,7 +27,7 @@ swagger:
     targetMemoryUtilizationPercentage: 90
   nodeSelector:
     aws:
-      karpenter-node: ems-platform-autoscalernode-large
+      karpenter-node: platform-autoscalernode-large
     onprem: {}
     default:
   tolerations: []
@@ -46,8 +46,8 @@ swagger:
     curlImage:
       repo: curlimages/curl
       tag: 8.12.1
-  BRAND_NAME: "ems-platform"
+  BRAND_NAME: "platform"
   ngf:
-    hostname: "emsapi.{{ .Values.endpoint }}"
+    hostname: "platform-api.{{ .Values.endpoint }}"
 
-endpoint: "ems.example.local"
+endpoint: "platform.example.local"

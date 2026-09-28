@@ -8,20 +8,20 @@ eventcollector:
     replicaCount: 3 # kafka cluster replica
     transaction:
       min_isr: 3
-  image: vlad-radu-anca/ems-event-collector
+  image: vlad-radu-anca/platform-event-collector
   tag: 5.0.latest
   pullPolicy: Always
   clusteringEnabled: true
   javaOpts: '-XX:MaxRAMPercentage=50 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp -XX:+UseG1GC -XX:MaxGCPauseMillis=500 -XX:+UseStringDeduplication -XX:+ExitOnOutOfMemoryError'
       
-  kafkaBootstrapServers: "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+  kafkaBootstrapServers: "platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
   TOCUrlBase: "http://toc-headless:7001"
   config: |+
-    #ems.kafka.topic.pm=ems-platform-pm-kpis
-    #ems.kafka.topic.pm.error=ems-platform-pm-kpis-ec-errors
-    #ems.kafka.topic.fm=ems-platform-fm-events
-    #ems.kafka.topic.fm.error=ems-platform-fm-events-ec-errors
-    #ems.kafka.topic.error=ems-platform-ec-errors
+    #platform.kafka.topic.pm=platform-pm-kpis
+    #platform.kafka.topic.pm.error=platform-pm-kpis-ec-errors
+    #platform.kafka.topic.fm=platform-fm-events
+    #platform.kafka.topic.fm.error=platform-fm-events-ec-errors
+    #platform.kafka.topic.error=platform-ec-errors
     #kafka-streams.cache.max.bytes.buffering=10240
     #kafka-streams.commit.interval.ms=1000
     #kafka-streams.metadata.max.age.ms=500
@@ -48,7 +48,7 @@ eventcollector:
   
   nodeSelector:
     aws:
-      karpenter-node: ems-platform-autoscalernode-large
+      karpenter-node: platform-autoscalernode-large
     onprem: {}
     default:
   tolerations: []
@@ -66,10 +66,10 @@ eventcollector:
     elastic: http://elastic:9200
     spark: http://spark:4041
     coreApi: http://core-api:9000
-    certsmgmt: http://ems-certs-mgmt:7702
+    certsmgmt: http://cert-service:7702
 
   secrets:
-    internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
+    internal_elastic_client: "platform_internal_elastic_client_xlv"
 
 securityContext:
   fsGroup: 10000

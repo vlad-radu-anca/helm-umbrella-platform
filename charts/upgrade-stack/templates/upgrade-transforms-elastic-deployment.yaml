@@ -58,7 +58,7 @@ spec:
               subPath: application.yaml
             {{- if .Values.mounts.elastic }}
             - name: elastic-secrets
-              mountPath: /opt/ems-platform/config/elastic
+              mountPath: /opt/platform/config/elastic
               readOnly: true
             {{- end }}
           resources:
