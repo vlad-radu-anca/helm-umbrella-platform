@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: strimzi-topic-operator
-  namespace: ems-platform
+  namespace: platform
   labels:
     app: {{ .Values.topicOperator.name | default "strimzi-topic-operator" }}
 spec:

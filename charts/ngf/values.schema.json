@@ -65,7 +65,7 @@
         },
         "hostname": {
           "type": "string",
-          "description": "Hostname for the EMS API"
+          "description": "Hostname for the Platform API"
         },
         "allowOrigin": {
           "type": "string",
@@ -100,7 +100,7 @@
                 "type": "string"
               }
             },
-            "emscertmanager": {
+            "certservice": {
               "type": "array",
               "items": {
                 "type": "string"
@@ -119,7 +119,7 @@
               }
             }
           },
-          "required": ["toc", "cts", "emscertmanager", "apigw", "swagger"]
+          "required": ["toc", "cts", "certservice", "apigw", "swagger"]
         }
       },
       "required": ["smallcell_support", "ngf_enabled", "awsMode", "port", "hostname", "allowOrigin", "cert", "paths"]

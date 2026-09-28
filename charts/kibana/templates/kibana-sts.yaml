@@ -75,7 +75,7 @@ spec:
             [
                     "while [[ $(curl -sw '%{http_code}' -u \"$ELK_USERNAME:$ELK_PASSWORD\" {{ .Values.ConnectionUrls.elastic }} -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the Elastic to be ready...'; done; echo 'Connection with Elastic established'",
             ]
-      priorityClassName: ems-platform-low-priority
+      priorityClassName: platform-low-priority
       containers:
         - env:
             - name: ELASTICSEARCH_HOSTS
@@ -181,7 +181,7 @@ spec:
           resources: {}
           volumeMounts:
             - name: elastic-admin-client-secrets
-              mountPath: "/opt/ems-platform/config/elastic"
+              mountPath: "/opt/platform/config/elastic"
               readOnly: true
       restartPolicy: Always
       volumes:

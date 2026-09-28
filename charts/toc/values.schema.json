@@ -38,7 +38,7 @@
             "address"
           ]
         },
-        "emsui_subdomain": {
+        "webui_subdomain": {
           "type": "string"
         },
         "enabled": {
@@ -478,7 +478,7 @@
         "secrets": {
           "type": "object",
           "properties": {
-            "external_ems_aoa_client": {
+            "external_platform_aoa_client": {
               "type": "string"
             },
             "internal_pg_client": {
@@ -500,7 +500,7 @@
             }
           }
         },
-        "ems-platform_toc_access_role": {
+        "platform_toc_access_role": {
           "type": "string"
         }
       }

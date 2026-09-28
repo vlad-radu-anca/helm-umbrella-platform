@@ -129,7 +129,7 @@ jobs:
       - name: Install Strimzi CRDs
         if: steps.check-strimzi.outputs.install_strimzi == 'true'
         run: |
-          helm upgrade --install ems-cluster-operator \
+          helm upgrade --install platform-cluster-operator \
             oci://quay.io/strimzi-helm/strimzi-kafka-operator \
             -n kafka --create-namespace --version 0.45.0
 
@@ -257,8 +257,8 @@ jobs:
           while IFS= read -r CHART; do
             [[ -z "$CHART" ]] && continue
 
-            # Skip the umbrella chart (ems-platform-stack)
-            if [[ "$CHART" == "ems-platform-stack" ]]; then
+            # Skip the umbrella chart (platform-stack)
+            if [[ "$CHART" == "platform-stack" ]]; then
               echo "Skipping umbrella chart: $CHART"
               continue
             fi
@@ -279,8 +279,8 @@ jobs:
           
           while IFS= read -r CHART; do
 
-            # Skip the umbrella chart (ems-platform-stack)
-            if [[ "$CHART" == "ems-platform-stack" ]]; then
+            # Skip the umbrella chart (platform-stack)
+            if [[ "$CHART" == "platform-stack" ]]; then
               echo "Skipping umbrella chart: $CHART"
               continue
             fi

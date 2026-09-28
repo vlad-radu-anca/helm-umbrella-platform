@@ -19,7 +19,7 @@ spec:
               image: {{ .Values.CronJobs.LanDevices.image }}:{{ .Values.CronJobs.LanDevices.tag }}
               imagePullPolicy: Always
               args:
-                - /home/ems/k8sLanDevicesJob/execute.sh
+                - /home/platform/k8sLanDevicesJob/execute.sh
               envFrom:
                 - configMapRef:
                     name: elastic-auth-env

@@ -1,0 +1,19 @@
+{{- if .Values.helpcenter.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: help-center-pvc
+  {{- if eq (include "platform" .) "aws" }}
+  labels:
+    app.kubernetes.io/name: help-center
+  {{- end }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if eq (include "platform" .) "aws" }}
+  storageClassName: ebs-csi-encrypted-gp3
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.helpcenter.storage.size | default "5Gi" }}
+{{- end }}

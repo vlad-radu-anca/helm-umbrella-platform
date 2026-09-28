@@ -33,26 +33,26 @@ spec:
                 secretKeyRef:
                   name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
                   key: pg-admin-client-password
-            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_EMS_PLATFORM_TARGET_USER
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_PLATFORM_PLATFORM_TARGET_USER
               valueFrom:
                 secretKeyRef:
                   name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
-                  key: {{ (index .Values.envFromSecrets.pg "emsPlatform").usernameKey }}
-            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_EMS_PLATFORM_TARGET_PASSWORD
+                  key: {{ (index .Values.envFromSecrets.pg "platform").usernameKey }}
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_PLATFORM_PLATFORM_TARGET_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
-                  key: {{ (index .Values.envFromSecrets.pg "emsPlatform").passwordKey }}
-            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_EMS_PLATFORM_SOURCE_USER
+                  key: {{ (index .Values.envFromSecrets.pg "platform").passwordKey }}
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_PLATFORM_PLATFORM_SOURCE_USER
               valueFrom:
                 secretKeyRef:
                   name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
-                  key: {{ (index .Values.envFromSecrets.pg "emsPlatform").usernameKey }}
-            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_EMS_PLATFORM_SOURCE_PASSWORD
+                  key: {{ (index .Values.envFromSecrets.pg "platform").usernameKey }}
+            - name: UPGRADE_TRANSFORMS_PSQLCLIENT_PLATFORM_PLATFORM_SOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ if eq (include "platform" .) "aws" }}grafana-pg-secret{{ else }}internal-pg-client{{ end }}
-                  key: {{ (index .Values.envFromSecrets.pg "emsPlatform").passwordKey }}
+                  key: {{ (index .Values.envFromSecrets.pg "platform").passwordKey }}
 # GRAFANA
             - name: UPGRADE_TRANSFORMS_PSQLCLIENT_GRAFANA_TARGET_USER
               valueFrom:
@@ -80,12 +80,12 @@ spec:
               subPath: application.yaml
             {{- if .Values.mounts.elastic }}
             - name: elastic-secrets
-              mountPath: /opt/ems-platform/config/elastic
+              mountPath: /opt/platform/config/elastic
               readOnly: true
             {{- end }}
             {{- if .Values.mounts.pg }}
             - name: pg-secrets
-              mountPath: /opt/ems-platform/config/postgres
+              mountPath: /opt/platform/config/postgres
               readOnly: true
             {{- end }}
           resources:

@@ -39,7 +39,7 @@ apigw:
     targetMemoryUtilizationPercentage: 90
   nodeSelector:
     aws:
-      karpenter-node: ems-platform-autoscalernode-large
+      karpenter-node: platform-autoscalernode-large
     onprem: {}
     default:
   tolerations: []
@@ -50,7 +50,7 @@ apigw:
     annotations:
       nginx.ingress.kubernetes.io/enable-cors: "false"
     hosts:
-      - host: apigw.ems.example.local
+      - host: apigw.platform.example.local
         paths:
           - path: /
             pathType: ImplementationSpecific
@@ -67,16 +67,16 @@ apigw:
       onprem:
         uri: mongodb://mongo-tenant:27017/?serverSelectionTimeoutMS=4000&replicaSet=rs0
     pgDb:
-      dbname: ems-platform
+      dbname: platform
       host: postgresql-hl
       port: 5432
   secrets:
-    mongo_emsdb_client: "mongoatlas-emsdb-secrets"
+    mongo_appdb_client: "mongoatlas-appdb-secrets"
     internal_elastic_client: "internal_elastic_client"
     aws:
       internal_elastic_client: "internal_elastic_client"
 
-endpoint: ems.example.local
+endpoint: platform.example.local
 
 securityContext:
   fsGroup: 10000

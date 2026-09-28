@@ -188,7 +188,7 @@ jobs:
       - name: Update umbrella chart dependencies
         id: update_umbrella
         if: steps.bump_versions.outputs.updated_charts != ''
-        working-directory: ./charts/ems-platform-stack
+        working-directory: ./charts/platform-stack
         run: |
           UPDATED_CHARTS="${{ steps.bump_versions.outputs.updated_charts }}"
           UMBRELLA_CHART_FILE="Chart.yaml"
@@ -286,7 +286,7 @@ jobs:
           BASE_REF="HEAD^1"
           
           # Check if umbrella chart was directly modified
-          if git diff --name-only $BASE_REF HEAD | grep -q "charts/ems-platform-stack/"; then
+          if git diff --name-only $BASE_REF HEAD | grep -q "charts/platform-stack/"; then
             echo "umbrella_directly_changed=true" >> $GITHUB_OUTPUT
             echo "Umbrella chart was directly modified"
           else
@@ -297,7 +297,7 @@ jobs:
       - name: Bump umbrella chart if directly changed
         id: bump_umbrella_direct
         if: steps.check_umbrella_direct.outputs.umbrella_directly_changed == 'true' && steps.update_umbrella.outputs.umbrella_updated != 'true'
-        working-directory: ./charts/ems-platform-stack
+        working-directory: ./charts/platform-stack
         run: |
           UMBRELLA_CHART_FILE="Chart.yaml"
           BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
@@ -331,7 +331,7 @@ jobs:
 
       - name: Validate umbrella chart configuration
         if: steps.update_umbrella.outputs.umbrella_updated == 'true' || steps.bump_umbrella_direct.outputs.umbrella_direct_updated == 'true'
-        working-directory: ./charts/ems-platform-stack
+        working-directory: ./charts/platform-stack
         run: |
           echo "🧪 Validating umbrella chart configuration..."
           
@@ -382,7 +382,7 @@ jobs:
             
             # Add umbrella chart if it was updated (either through dependencies or direct changes)
             if [ "${{ steps.update_umbrella.outputs.umbrella_updated }}" = "true" ] || [ "${{ steps.bump_umbrella_direct.outputs.umbrella_direct_updated }}" = "true" ]; then
-              PUBLISH_CHARTS+=("\"ems-platform-stack\"")
+              PUBLISH_CHARTS+=("\"platform-stack\"")
             fi
             
             # Convert to JSON array
@@ -407,12 +407,12 @@ jobs:
             COMMIT_MSG="$COMMIT_MSG
 
           Updated umbrella chart (dependencies):
-          - ems-platform-stack: ${{ steps.update_umbrella.outputs.umbrella_version_change }}"
+          - platform-stack: ${{ steps.update_umbrella.outputs.umbrella_version_change }}"
           elif [ "${{ steps.bump_umbrella_direct.outputs.umbrella_direct_updated }}" = "true" ]; then
             COMMIT_MSG="$COMMIT_MSG
 
           Updated umbrella chart (direct changes):
-          - ems-platform-stack: ${{ steps.bump_umbrella_direct.outputs.umbrella_direct_version_change }}"
+          - platform-stack: ${{ steps.bump_umbrella_direct.outputs.umbrella_direct_version_change }}"
           fi
           
           git commit -m "$COMMIT_MSG"
@@ -450,10 +450,10 @@ jobs:
             // Umbrella chart section
             if (umbrellaUpdated === 'true') {
               releaseBody += `\n### 🗿 Umbrella Chart Updated (Dependencies)\n\n`;
-              releaseBody += `- **ems-platform-stack**: \`${umbrellaVersionChange}\`\n`;
+              releaseBody += `- **platform-stack**: \`${umbrellaVersionChange}\`\n`;
             } else if (umbrellaDirectUpdated === 'true') {
               releaseBody += `\n### 🗿 Umbrella Chart Updated (Direct Changes)\n\n`;
-              releaseBody += `- **ems-platform-stack**: \`${umbrellaDirectVersionChange}\`\n`;
+              releaseBody += `- **platform-stack**: \`${umbrellaDirectVersionChange}\`\n`;
             }
             
             releaseBody += `\n---\n*Release created automatically after PR merge*`;

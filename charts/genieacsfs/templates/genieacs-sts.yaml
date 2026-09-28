@@ -31,7 +31,7 @@ spec:
       - name: wait-for-dependency
         image: {{ .Values.initContainers.busyboxImage.repo | default "busybox" }}:{{ .Values.initContainers.busyboxImage.tag | default "1.36.0" }}
         command: ['sh', '-c', 'until nslookup mongo | grep "Name:"; do echo waiting for mongo; sleep 2; done;']
-      priorityClassName: ems-platform-medium-priority
+      priorityClassName: platform-medium-priority
       containers:
         - name: genieacsfs
           image: "{{ .Values.image }}:{{ .Values.tag }}"

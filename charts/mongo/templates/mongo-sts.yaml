@@ -24,7 +24,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      priorityClassName: ems-platform-high-priority
+      priorityClassName: platform-high-priority
       containers:
         - name: mongo
           image: "{{ .Values.image }}:{{ .Values.tag }}"

@@ -60,7 +60,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.priorityClassName
-          value: ems-platform-high-priority
+          value: platform-high-priority
 
   - it: should mount config volume
     set:
@@ -94,14 +94,14 @@ tests:
           path: spec.template.spec.containers[0].volumeMounts
           content:
             name: elastic-client-secrets
-            mountPath: "/opt/ems-platform/config/elastic"
+            mountPath: "/opt/platform/config/elastic"
             readOnly: true
 
   - it: should mount elastic secrets for aws platform using CSI
     set:
       apigw.smallcell_support.enabled: true
       platform: aws
-      apigw.secrets.internal_elastic_client: "ems-platform-internal-elastic-client-xlv"
+      apigw.secrets.internal_elastic_client: "platform-internal-elastic-client-xlv"
     asserts:
       - contains:
           path: spec.template.spec.volumes
@@ -111,19 +111,19 @@ tests:
               driver: secrets-store.csi.k8s.io
               readOnly: true
               volumeAttributes:
-                secretProviderClass: "ems-platform-internal-elastic-client-xlv"
+                secretProviderClass: "platform-internal-elastic-client-xlv"
 
   - it: should use aws node selector when platform is aws
     set:
       apigw.smallcell_support.enabled: true
       platform: aws
       apigw.nodeSelector.aws:
-        karpenter-node: ems-platform-autoscalernode-large
+        karpenter-node: platform-autoscalernode-large
     asserts:
       - equal:
           path: spec.template.spec.nodeSelector
           value:
-            karpenter-node: ems-platform-autoscalernode-large
+            karpenter-node: platform-autoscalernode-large
 
   - it: should use onprem node selector when platform is onprem
     set:
@@ -172,7 +172,7 @@ tests:
             name: MONGO_USERNAME
             valueFrom:
               secretKeyRef:
-                name: external-mongo-emsdb-secret
+                name: external-mongo-appdb-secret
                 key: mongo-username
       - contains:
           path: spec.template.spec.initContainers[0].env
@@ -180,7 +180,7 @@ tests:
             name: MONGO_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: external-mongo-emsdb-secret
+                name: external-mongo-appdb-secret
                 key: mongo-password
 
   - it: should configure mongodb init container correctly for aws
@@ -197,7 +197,7 @@ tests:
             name: MONGO_USERNAME
             valueFrom:
               secretKeyRef:
-                name: mongo-emsdb-client
+                name: mongo-appdb-client
                 key: mongo-username
       - contains:
           path: spec.template.spec.initContainers[0].env
@@ -205,7 +205,7 @@ tests:
             name: MONGO_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: mongo-emsdb-client
+                name: mongo-appdb-client
                 key: mongo-password
 
   - it: should configure init container with proper name
@@ -236,9 +236,9 @@ tests:
       - contains:
           path: spec.template.spec.volumes
           content:
-            name: mongo-emsdb-secrets
+            name: mongo-appdb-secrets
             secret:
-              secretName: external-mongo-emsdb-secret
+              secretName: external-mongo-appdb-secret
 
   - it: should mount mongodb secrets volume for aws using CSI
     set:
@@ -248,12 +248,12 @@ tests:
       - contains:
           path: spec.template.spec.volumes
           content:
-            name: mongo-emsdb-secrets
+            name: mongo-appdb-secrets
             csi:
               driver: secrets-store.csi.k8s.io
               readOnly: true
               volumeAttributes:
-                secretProviderClass: mongoatlas-emsdb-secrets
+                secretProviderClass: mongoatlas-appdb-secrets
 
   - it: should set tolerations when provided
     set:

@@ -1,0 +1,26 @@
+{{- if .Values.helpcenter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: help-center
+  labels:
+    app.kubernetes.io/name: help-center
+  {{- if and (eq .Values.platform "onprem") .Values.helpcenter.dev_mode }}
+  annotations:
+    metallb.universe.tf/allow-shared-ip: "key-to-share-1.2.3.4"
+  {{- end }}
+spec:
+  selector:
+    app.kubernetes.io/name: help-center
+  ports:
+    - name: http
+      port: {{ .Values.helpcenter.service.port }}
+      targetPort: 9094
+    - name: internal
+      port: 3002
+      targetPort: 3002
+  type: {{ ternary "LoadBalancer" "ClusterIP" .Values.helpcenter.dev_mode }}
+  {{- if and (eq .Values.platform "onprem") .Values.helpcenter.dev_mode }}
+  loadBalancerIP: {{ .Values.helpcenter.loadBalancerIP }}
+  {{- end }}
+{{- end }}

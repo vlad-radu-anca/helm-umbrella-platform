@@ -35,14 +35,14 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             [
-                "while [[ $(curl -sw '%{http_code}' http://core-api:9000/diesel/rest/v1/ems/local/started -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for core-api to be ready...'; done; echo 'core-api is ready'",
+                "while [[ $(curl -sw '%{http_code}' http://core-api:9000/diesel/rest/v1/platform/local/started -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for core-api to be ready...'; done; echo 'core-api is ready'",
             ]
-      priorityClassName: ems-platform-medium-priority
+      priorityClassName: platform-medium-priority
       containers:
         - args:
             - /bin/sh
             - -c
-            - /bin/bash -c "/usr/local/ems/snmpproxy/bin/run.sh"
+            - /bin/bash -c "/usr/local/platform/snmpproxy/bin/run.sh"
           name: snmpproxy
           image: "{{ .Values.image }}:{{ .Values.tag }}"
           ports:
@@ -82,21 +82,21 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-            - mountPath: /usr/local/ems/snmpproxy/config/log4j.properties
+            - mountPath: /usr/local/platform/snmpproxy/config/log4j.properties
               name: snmpproxy-properties
               subPath: log4j.snmpproxy.properties
-            - mountPath: /usr/local/ems/snmpproxy/config/ems-config.json
-              name: ems-config
-              subPath: ems-config.json
+            - mountPath: /usr/local/platform/snmpproxy/config/platform-config.json
+              name: platform-config
+              subPath: platform-config.json
       restartPolicy: Always
       volumes:
         - name: snmpproxy-properties
           configMap:
             name: snmpproxy-properties
             defaultMode: 0644
-        - name: ems-config
+        - name: platform-config
           configMap:
-            name: ems-config
+            name: platform-config
             defaultMode: 0644
       {{- with .Values.nodeSelector }}
       nodeSelector:

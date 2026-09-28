@@ -20,7 +20,7 @@ spec:
               command: ["/bin/sh", "-c"]
               args:
                 [
-                    "while [[ $(curl -sw '%{http_code}' http://core-api:9000/diesel/rest/v1/ems/local/started -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for core-api to be ready...'; done; echo 'core-api is ready'",
+                    "while [[ $(curl -sw '%{http_code}' http://core-api:9000/diesel/rest/v1/platform/local/started -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for core-api to be ready...'; done; echo 'core-api is ready'",
                 ]
           containers:
             - name: sync-preferred-location-job

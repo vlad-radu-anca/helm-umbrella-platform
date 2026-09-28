@@ -6,12 +6,12 @@ aws:
   secretAccessKey: "your-secret-access-key"
   clusters:
     blue:
-      eksCluster: "ems-platform-blue-t2"
+      eksCluster: "platform-blue-t2"
       region: us-east-1
       prefix: "blue-"
       suffix: "-blue"
     green:
-      eksCluster: "ems-platform-green-t2"
+      eksCluster: "platform-green-t2"
       region: us-east-1
       prefix: "green-"
       suffix: "-green"
@@ -31,13 +31,13 @@ kafkaClient:
   port: 9092
   mm2:
     sourceCluster:
-      AuthSecret: "ems-platform-kafka-blue-external-user"
+      AuthSecret: "platform-kafka-blue-external-user"
       BootstrapServers: "kafka-bootstrap"
       security:
         protocol: "TLS"
   secrets:
-    kafkaCACert: "ems-platform-kafka-blue-ca-cert"
-    kafkaClusterExternalUser: "ems-platform-kafka-cluster-external-user"
+    kafkaCACert: "platform-kafka-blue-ca-cert"
+    kafkaClusterExternalUser: "platform-kafka-cluster-external-user"
 
 elasticClient:
   source:
@@ -163,7 +163,7 @@ upgradeTransformsElastic:
 secrets:
   # Secret / SecretProviderClass names. For AWS elastic secret use 'elastic-admin-client' with keys elk-username / elk-password
   elastic: elastic-admin-client
-  mongo: external-mongo-emsdb-secret
+  mongo: external-mongo-appdb-secret
   pg: internal-pg-client
   temporal: ""
 
@@ -184,9 +184,9 @@ envFromSecrets:
     grafana:
       usernameKey: pg-grafana-client-username
       passwordKey: pg-grafana-client-password
-    emsPlatform:
-      usernameKey: pg-ems-platform-perms-client-username
-      passwordKey: pg-ems-platform-perms-client-password
+    platform:
+      usernameKey: pg-platform-perms-client-username
+      passwordKey: pg-platform-perms-client-password
 
 nodeSelector: {}
 affinity: {}
@@ -194,28 +194,28 @@ tolerations: []
 
 helmReleases:
   blue:
-    emsPlatformReleaseName: "ems-platform"
-    emsPlatformChartName: "ems-platform-aws-5.0.0"
-    emsPlatformChartRepo: "EMS"
-    kafkaReleaseName: "ems-platform-kafka-cluster"
+    platformReleaseName: "platform"
+    platformChartName: "platform-aws-5.0.0"
+    platformChartRepo: "platform"
+    kafkaReleaseName: "platform-kafka-cluster"
     kafkaChartName: "kafka-helm-5.1.6"
-    kafkaChartRepo: "EMS"
+    kafkaChartRepo: "platform"
     mm2ReleaseName: "mm2-blue-to-green"
     mm2ChartName: "kafka-mirror-helm"
-    mm2ChartRepo: "EMS"
+    mm2ChartRepo: "platform"
     ngfDevicesReleaseName: "ngf-devices"
     ngfDevicesChartName: "nginx-gateway-fabric-1.6.2"
     ngfDevicesChartRepo: "oci://ghcr.io/nginxinc/charts"
   green:
-    emsPlatformReleaseName: "ems-platform"
-    emsPlatformChartName: "ems-platform-aws-5.0.0"
-    emsPlatformChartRepo: "EMS"
-    kafkaReleaseName: "ems-platform-kafka-cluster"
+    platformReleaseName: "platform"
+    platformChartName: "platform-aws-5.0.0"
+    platformChartRepo: "platform"
+    kafkaReleaseName: "platform-kafka-cluster"
     kafkaChartName: "kafka-helm-5.1.6"
-    kafkaChartRepo: "EMS"
+    kafkaChartRepo: "platform"
     mm2ReleaseName: "mm2-blue-to-green"
     mm2ChartName: "kafka-mirror-helm"
-    mm2ChartRepo: "EMS"
+    mm2ChartRepo: "platform"
     ngfDevicesReleaseName: "ngf-devices"
     ngfDevicesChartName: "nginx-gateway-fabric-1.6.2"
     ngfDevicesChartRepo: "oci://ghcr.io/nginxinc/charts"

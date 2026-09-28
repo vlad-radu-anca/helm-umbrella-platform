@@ -66,7 +66,7 @@ spec:
                 "while [[ $(curl -sw '%{http_code}' http://strimzi-topic-operator.kafka.svc.cluster.local:8080/ready -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the to to be ready...'; done; echo 'Connection with to established'",
             ]
       {{- end }}
-      priorityClassName: ems-platform-high-priority
+      priorityClassName: platform-high-priority
       containers:
         - image: "{{ .Values.eventcollector.image }}:{{ .Values.eventcollector.tag }}"
           imagePullPolicy: {{ .Values.eventcollector.pullPolicy }}
@@ -75,7 +75,7 @@ spec:
             value: {{ template "eventcollector.fullname" . }}
           - name: QUARKUS_KAFKA_STREAMS_BOOTSTRAP_SERVERS
             value: {{ .Values.eventcollector.kafkaBootstrapServers | quote  }}
-          - name: EMS_ELASTIC_URL
+          - name: PLATFORM_ELASTIC_URL
             value: {{ .Values.eventcollector.ConnectionUrls.elastic | quote  }}
           - name: TOCUrlBase
             value: {{ .Values.eventcollector.TOCUrlBase | quote }}
@@ -126,7 +126,7 @@ spec:
             - mountPath: /deployments/logconfig
               name: event-collector-log-config
             - name: elastic-client-secrets
-              mountPath: "/opt/ems-platform/config/elastic"
+              mountPath: "/opt/platform/config/elastic"
               readOnly: true
         {{- if .Values.eventcollector.config }}
             - mountPath: /deployments/config

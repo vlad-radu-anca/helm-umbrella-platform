@@ -15,8 +15,8 @@ data:
       serviceDocs:
         - name: "api-gw"
           url: "http://apigw-headless:7702/swagger/doc.json"
-        - name: "ems-certs-mgmt"
-          url: "http://ems-certs-mgmt-headless:7702/swagger/doc.json"
+        - name: "cert-service"
+          url: "http://cert-service-headless:7702/swagger/doc.json"
         - name: "cts"
           url: "http://cts-headless:7701/swagger/doc.json"
         - name: "toc"

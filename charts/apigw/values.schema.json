@@ -192,7 +192,7 @@
       "endpoint": {
         "type": "string",
         "pattern": "^[a-zA-Z0-9.-]+$",
-        "description": "Base domain endpoint (e.g., ems.example.local)"
+        "description": "Base domain endpoint (e.g., platform.example.local)"
       }
     },
     "required": ["apigw", "endpoint"]

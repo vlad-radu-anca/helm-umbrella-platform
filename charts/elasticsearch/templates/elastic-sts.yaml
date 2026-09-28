@@ -58,7 +58,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
-      priorityClassName: {{ if eq (include "platform" .) "aws" }}ems-platform-very-high-priority{{ else }}ems-platform-high-priority{{ end }}
+      priorityClassName: {{ if eq (include "platform" .) "aws" }}platform-very-high-priority{{ else }}platform-high-priority{{ end }}
 
       containers:
         - name: elasticsearch
@@ -130,7 +130,7 @@ spec:
               name: elastic-tls-secret
           {{- if eq (include "platform" .) "aws" }}
             - name: elastic-admin-client-secrets
-              mountPath: "/opt/ems-platform/config/elastic"
+              mountPath: "/opt/platform/config/elastic"
               readOnly: true
           {{- end }}
           startupProbe:

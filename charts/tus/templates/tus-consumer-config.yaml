@@ -18,14 +18,14 @@ data:
 
     kafka:
       kafkaBootstrapServers:
-        - "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+        - "platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
       connectionTimeout: 10000
-      topic: "ems-platform-tus-file-uploaded"
+      topic: "platform-tus-file-uploaded"
       groupId: "tus-consumer-group"
-      notificationTopic: "ems-platform-tus-file-uploaded-notification"
+      notificationTopic: "platform-tus-file-uploaded-notification"
       
     toc:
-      baseUrl: "http://toc-headless.ems-platform.svc.cluster.local:7001"
+      baseUrl: "http://toc-headless.platform.svc.cluster.local:7001"
       timeout: "30s"
 
     fileStorage:

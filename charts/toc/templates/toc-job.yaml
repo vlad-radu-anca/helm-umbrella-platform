@@ -44,8 +44,8 @@ spec:
           workingDir: /tmp/toc-init-job
           command: [ "/bin/sh", "toc-init.sh" ]
           volumeMounts:
-            - name: ems-aoa-secrets
-              mountPath: "/opt/ems-platform/config/users"
+            - name: platform-aoa-secrets
+              mountPath: "/opt/platform/config/users"
               readOnly: true
             - mountPath: /tmp/toc-init-job
               name: toc-init-job
@@ -70,16 +70,16 @@ spec:
               {{- end }}
       volumes:
         {{- if eq (include "platform" .) "onprem" }}
-        - name: ems-aoa-secrets
+        - name: platform-aoa-secrets
           secret:
-            secretName: external-ems-aoa-client
+            secretName: external-platform-aoa-client
         {{- else if eq (include "platform" .) "aws" }}
-        - name: ems-aoa-secrets
+        - name: platform-aoa-secrets
           csi:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: "{{ .Values.toc.secrets.external_ems_aoa_client | replace "_" "-" }}"
+              secretProviderClass: "{{ .Values.toc.secrets.external_platform_aoa_client | replace "_" "-" }}"
         {{- end }}
         - name: toc-init-job
           configMap:

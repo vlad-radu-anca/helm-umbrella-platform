@@ -32,7 +32,7 @@ mongoInit:
   cfg:
     credsUsername: root-user
     credsSecret: mongo-admin-credentials
-    credsDir: "/opt/ems-platform/config/mongo/admin"
+    credsDir: "/opt/platform/config/mongo/admin"
     users: []
     skipUpdate: false
   nodeSelector:

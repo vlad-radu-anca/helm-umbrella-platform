@@ -18,10 +18,10 @@ data:
 
     kafka:
       kafkaBootstrapServers:
-        - "ems-platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+        - "platform-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
       connectionTimeout: 10000
-      topic: "ems-platform-tus-file-uploaded"
-      notificationTopic: "ems-platform-tus-file-uploaded-notification"
+      topic: "platform-tus-file-uploaded"
+      notificationTopic: "platform-tus-file-uploaded-notification"
 
     logger:
       logLevel: "INFO"

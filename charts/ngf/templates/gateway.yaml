@@ -2,7 +2,7 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: ems
+  name: platform
 spec:
   gatewayClassName: nginx
   listeners:
@@ -19,6 +19,6 @@ spec:
       mode: Terminate
       certificateRefs:
       - kind: Secret
-        name: emsapi-tls-secret
+        name: platform-api-tls-secret
   {{- end }}
 {{- end }}

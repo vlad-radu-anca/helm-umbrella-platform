@@ -1,4 +1,4 @@
-endpoint: "ems.example.local"
+endpoint: "platform.example.local"
 
 platform: onprem # or aws
 
@@ -52,7 +52,7 @@ tus:
   
   nodeSelector:
     aws:
-      eks-managed-node-group: ems-platform
+      eks-managed-node-group: platform
     onprem: {}
     default:
   tolerations: []

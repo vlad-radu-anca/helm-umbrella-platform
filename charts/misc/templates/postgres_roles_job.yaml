@@ -26,9 +26,9 @@ spec:
             - name: PGPORT
               value: "5432"
             - name: PGDATABASE
-              value: "ems-platform"
+              value: "platform"
             - name: PGUSER
-              value: "ems-platform"
+              value: "platform"
             - name: PGPASSWORD
               value: "password#123"
           resources: {}

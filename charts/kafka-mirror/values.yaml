@@ -4,11 +4,11 @@ kafkaMirror:
   kafkaVersion: 3.9.0
   replicaCount: 1
   sourceCluster:
-    name: ems-platform-kafka-blue
-    trustSecret: ems-platform-kafka-blue-ca-cert
+    name: platform-kafka-blue
+    trustSecret: platform-kafka-blue-ca-cert
     #auth:
     #  type: tls
-    #  secret: ems-platform-kafka-blue-external-user
+    #  secret: platform-kafka-blue-external-user
     bootstrapServers: kafka-bootstrap.fqdn
     config:
       config.storage.replication.factor: -1
@@ -17,7 +17,7 @@ kafkaMirror:
       compression.type: gzip
       batch.size: 8192   
   targetCluster:
-    name: ems-platform-kafka-green
+    name: platform-kafka-green
     bootstrapServers: kafka:9092
     config:
       compression.type: gzip

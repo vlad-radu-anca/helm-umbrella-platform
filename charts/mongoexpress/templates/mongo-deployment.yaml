@@ -24,12 +24,12 @@ spec:
           - name: MONGO_USERNAME
             valueFrom:
               secretKeyRef:
-                name: external-mongo-emsdb-secret
+                name: external-mongo-appdb-secret
                 key: mongo-username
           - name: MONGO_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: external-mongo-emsdb-secret
+                name: external-mongo-appdb-secret
                 key: mongo-password
         command: ['bash', '-c', 'until mongosh "{{ .Values.ConnectionUrls.mongo.uri }}" --eval "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)"; do echo "Waiting for MongoDB to be available"; sleep 2; done;']
       containers:
@@ -52,11 +52,11 @@ spec:
           - name: ME_CONFIG_BASICAUTH_USERNAME
             valueFrom:
               secretKeyRef:
-                name: external-ems-aoa-client
-                key: ems-username
+                name: external-platform-aoa-client
+                key: platform-username
           - name: ME_CONFIG_BASICAUTH_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: external-ems-aoa-client
-                key: ems-password
+                name: external-platform-aoa-client
+                key: platform-password
 {{- end }}

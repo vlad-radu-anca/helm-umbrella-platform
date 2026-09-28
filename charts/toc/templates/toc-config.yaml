@@ -23,7 +23,7 @@ data:
 
     swagger:
       generate: false
-      emsUiUrl: "https://{{ .Values.toc.emsui_subdomain }}.{{ .Values.endpoint }}"
+      webUiUrl: "https://{{ .Values.toc.webui_subdomain }}.{{ .Values.endpoint }}"
       keycloakUrl: "https://keycloak.{{ .Values.endpoint }}/auth"
     
     keycloakClient:
@@ -60,7 +60,7 @@ data:
       interactionMatrixDeviceLimit: 16
 
     coreApiClient:
-      url: "{{ .Values.toc.ConnectionUrls.coreApi }}/diesel/rest/v1/ems/local/"
+      url: "{{ .Values.toc.ConnectionUrls.coreApi }}/diesel/rest/v1/platform/local/"
       connectionTimeout: 30
 
     rbacDb:
@@ -109,8 +109,8 @@ data:
       recordValue: {{ .Values.toc.aws_config.recordValue }}
       {{- end }}
       sftpServerType: {{ .Values.toc.aws_config.sftp_server_type }}
-      deploymentName: "ems-platform-sftp-server"
-      configMapName: "ems-platform-sftp-server-users"
+      deploymentName: "platform-sftp-server"
+      configMapName: "platform-sftp-server-users"
       sftpIp: "{{ .Values.toc.loadBalancerIP }}"
       namespace: "{{ .Release.Namespace }}"
       {{- if eq .Values.platform "aws" }}
@@ -189,7 +189,7 @@ metadata:
 data:
   rebranded-device-model-mapping.yaml: |
     brands:
-      ems:
+      platform:
         deviceModels:
           - brandModel: "PC-400"
             baseModel: "PC-400"

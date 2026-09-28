@@ -11,7 +11,7 @@ data:
       devMode: {{ .Values.devMode }}
       useLocalFrontendUrl: false
       globalEndpoint: "{{ .Values.endpoint }}"
-      globalEmsUiSubdomain: "{{ .Values.emsuiSubdomain }}"
+      globalWebUiSubdomain: "{{ .Values.webuiSubdomain }}"
       brandName: "{{ .Values.brandName }}"
       permissionVersion: "5.0"
 
@@ -24,20 +24,20 @@ data:
       url: "{{ .Values.ConnectionUrls.keycloak }}/"
       realmId: "DefaultTenant"
       clients:
-        emsui:
+        webui:
           redirectUris:
             - "*"
             {{- if .Values.devMode }}
             - "http://localhost:9093/*"
             {{- end }}
-        emsHelpCenter:
+        helpCenter:
           redirectUris:
             - "auth/*"
             - "https://help-center.{{ .Values.endpoint }}/*"
             {{- if .Values.devMode }}
             - "http://localhost:42001/*"
             {{- end }}
-        ems:
+        platform:
           redirectUris:
             - "*"
             - "https://swagger.{{ .Values.endpoint }}/oauth2/*"

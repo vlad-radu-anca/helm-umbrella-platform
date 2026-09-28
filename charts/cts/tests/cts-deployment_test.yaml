@@ -66,7 +66,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.priorityClassName
-          value: ems-platform-high-priority
+          value: platform-high-priority
 
   - it: should configure image pull secrets from values
     set:
@@ -118,7 +118,7 @@ tests:
             name: MONGO_USERNAME
             valueFrom:
               secretKeyRef:
-                name: external-mongo-emsdb-secret
+                name: external-mongo-appdb-secret
                 key: mongo-username
 
   - it: should configure toc init container with values from config
@@ -179,25 +179,25 @@ tests:
       - contains:
           path: spec.template.spec.volumes
           content:
-            name: pg-perms-ems-platform-secrets
+            name: pg-perms-platform-secrets
             secret:
               secretName: internal-pg-client
       - contains:
           path: spec.template.spec.volumes
           content:
-            name: mongo-emsdb-secrets
+            name: mongo-appdb-secrets
             secret:
-              secretName: external-mongo-emsdb-secret
+              secretName: external-mongo-appdb-secret
 
   - it: should mount CSI secrets for aws platform
     set:
       platform: aws
       cts.smallcell_support.enabled: true
       cts.secrets:
-        internal_gh_ctd_repo_client: "ems-platform_internal_gh_ctd_repo_client_xlv"
-        internal_pg_client: "ems-platform_internal_pg_client_xlv"
-        internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
-        internal_keycloak_toc_client: "ems-platform_internal_keycloak_toc_client_xlv"
+        internal_gh_ctd_repo_client: "platform_internal_gh_ctd_repo_client_xlv"
+        internal_pg_client: "platform_internal_pg_client_xlv"
+        internal_elastic_client: "platform_internal_elastic_client_xlv"
+        internal_keycloak_toc_client: "platform_internal_keycloak_toc_client_xlv"
     asserts:
       - contains:
           path: spec.template.spec.volumes
@@ -207,19 +207,19 @@ tests:
               driver: secrets-store.csi.k8s.io
               readOnly: true
               volumeAttributes:
-                secretProviderClass: "ems-platform-internal-gh-ctd-repo-client-xlv"
+                secretProviderClass: "platform-internal-gh-ctd-repo-client-xlv"
 
   - it: should use aws node selector when platform is aws
     set:
       platform: aws
       cts.smallcell_support.enabled: true
       cts.nodeSelector.aws:
-        karpenter-node: ems-platform-autoscalernode-large
+        karpenter-node: platform-autoscalernode-large
     asserts:
       - equal:
           path: spec.template.spec.nodeSelector
           value:
-            karpenter-node: ems-platform-autoscalernode-large
+            karpenter-node: platform-autoscalernode-large
 
   - it: should not have nodeSelector for onprem when empty
     set:

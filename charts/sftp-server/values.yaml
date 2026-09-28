@@ -18,31 +18,31 @@ sftp:
 
   sftpConfig:
     users:
-      - username: ems-platform-ems-sftp-ro
+      - username: platform-sftp-ro
         password: "changeme"
         encrypted: false
         uid: "1000"
         gid: "100"
         dir: ""
         authorizedKeys: {}
-        mountPath: "/home/ems-platform-ems-sftp-ro"
+        mountPath: "/home/platform-sftp-ro"
         #subPath: "test" # mounts to a subfolder "inbox" on a persistent volume. This user will only be able to access "inbox subfolder"
-      - username: ems-platform-ems-sftp-admin
+      - username: platform-sftp-admin
         password: "changeme"
         encrypted: false
         uid: "1001"
         gid: "100"
         dir: ""
         authorizedKeys: {}
-        mountPath: "/home/ems-platform-ems-sftp-admin"
-      - username: ems-platform-ems-sftp-rw
+        mountPath: "/home/platform-sftp-admin"
+      - username: platform-sftp-rw
         password: "changeme"
         encrypted: false
         uid: "1002"
         gid: "100"
         dir: ""
         authorizedKeys: {}
-        mountPath: "/home/ems-platform-ems-sftp-rw"
+        mountPath: "/home/platform-sftp-rw"
     hostKeys: {}
       # secret: name-of-existing-secret
       # keys:
@@ -53,24 +53,24 @@ sftp:
     enabled: true
     script: |
       #!/bin/bash
-      cd /home/ems-platform-ems-sftp-ro
+      cd /home/platform-sftp-ro
       mkdir download
       mkdir config-eNB
       mkdir upload
       mkdir images
-      chown -R ems-platform-ems-sftp-ro:users download
-      chown -R ems-platform-ems-sftp-ro:users images
-      chown -R ems-platform-ems-sftp-ro:users config-eNB
-      chown -R ems-platform-ems-sftp-ro:users upload
-      cd /home/ems-platform-ems-sftp-rw
+      chown -R platform-sftp-ro:users download
+      chown -R platform-sftp-ro:users images
+      chown -R platform-sftp-ro:users config-eNB
+      chown -R platform-sftp-ro:users upload
+      cd /home/platform-sftp-rw
       mkdir download
       mkdir config-eNB
       mkdir upload
       mkdir images
-      chown -R ems-platform-ems-sftp-rw:users download
-      chown -R ems-platform-ems-sftp-rw:users images
-      chown -R ems-platform-ems-sftp-rw:users config-eNB
-      chown -R ems-platform-ems-sftp-rw:users upload
+      chown -R platform-sftp-rw:users download
+      chown -R platform-sftp-rw:users images
+      chown -R platform-sftp-rw:users config-eNB
+      chown -R platform-sftp-rw:users upload
 
   debug:
     enabled: false

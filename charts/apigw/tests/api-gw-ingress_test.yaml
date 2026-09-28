@@ -13,9 +13,9 @@ tests:
     set:
       apigw.ingress.enabled: true
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix
@@ -32,9 +32,9 @@ tests:
     set:
       apigw.ingress.enabled: true
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix
@@ -49,9 +49,9 @@ tests:
     set:
       apigw.ingress.enabled: true
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix
@@ -63,9 +63,9 @@ tests:
     set:
       apigw.ingress.enabled: true
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix
@@ -81,12 +81,12 @@ tests:
     set:
       apigw.ingress.enabled: true
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.annotations:
         nginx.ingress.kubernetes.io/enable-cors: "true"
         nginx.ingress.kubernetes.io/proxy-body-size: "100m"
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix
@@ -106,9 +106,9 @@ tests:
       apigw.ingress.enabled: true
       apigw.ingress.className: nginx
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix
@@ -125,9 +125,9 @@ tests:
       apigw.ingress.enabled: true
       apigw.ingress.className: nginx
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix
@@ -140,13 +140,13 @@ tests:
     set:
       apigw.ingress.enabled: true
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.tls:
         - secretName: apigw-tls
           hosts:
-            - apigw.ems.example.local
+            - apigw.platform.example.local
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix
@@ -156,7 +156,7 @@ tests:
           value: apigw-tls
       - contains:
           path: spec.tls[0].hosts
-          content: apigw.ems.example.local
+          content: apigw.platform.example.local
 
   - it: should create correct rule with endpoint substitution
     set:
@@ -164,7 +164,7 @@ tests:
       apigw.service.port: 7702
       endpoint: example.com
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /api
               pathType: Prefix  # Required by schema
@@ -189,9 +189,9 @@ tests:
     set:
       apigw.ingress.enabled: true
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix
@@ -210,9 +210,9 @@ tests:
     set:
       apigw.ingress.enabled: true
       apigw.service.port: 7702
-      endpoint: ems.example.local
+      endpoint: platform.example.local
       apigw.ingress.hosts:
-        - host: apigw.ems.example.local
+        - host: apigw.platform.example.local
           paths:
             - path: /
               pathType: Prefix

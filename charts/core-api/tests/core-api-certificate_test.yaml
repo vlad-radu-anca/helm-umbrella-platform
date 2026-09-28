@@ -14,7 +14,7 @@ tests:
           - core-api
         subject:
           organizations:
-            - ems-platform
+            - platform
         issuerRef:
           group: cert-manager.io
           kind: ClusterIssuer
@@ -42,7 +42,7 @@ tests:
           - core-api
         subject:
           organizations:
-            - ems-platform
+            - platform
         issuerRef:
           group: cert-manager.io
           kind: ClusterIssuer
@@ -137,7 +137,7 @@ tests:
         name: core-api-tls-secret
         subject:
           organizations:
-            - ems-platform
+            - platform
         privateKey:
           algorithm: RSA
           encoding: PKCS1
@@ -146,7 +146,7 @@ tests:
     asserts:
       - contains:
           path: spec.subject.organizations
-          content: ems-platform
+          content: platform
 
   - it: should set issuer reference from values
     set:
@@ -226,7 +226,7 @@ tests:
           - core-api
         subject:
           organizations:
-            - ems-platform
+            - platform
         issuerRef:
           group: cert-manager.io
           kind: ClusterIssuer
@@ -237,7 +237,7 @@ tests:
           algorithm: RSA
           encoding: PKCS1
           size: 2048
-      endpoint: ems.example.local
+      endpoint: platform.example.local
     asserts:
       - hasDocuments:
           count: 1
@@ -255,10 +255,10 @@ tests:
           value: 168h
       - equal:
           path: spec.dnsNames[0]
-          value: core-api.ems.example.local
+          value: core-api.platform.example.local
       - equal:
           path: spec.subject.organizations[0]
-          value: ems-platform
+          value: platform
       - equal:
           path: spec.issuerRef.name
           value: selfsigned-cluster-issuer
@@ -304,7 +304,7 @@ tests:
         name: core-api-tls-secret
         subject:
           organizations:
-            - ems-platform
+            - platform
             - engineering
         privateKey:
           algorithm: RSA
@@ -315,7 +315,7 @@ tests:
       - equal:
           path: spec.subject.organizations
           value:
-            - ems-platform
+            - platform
             - engineering
 
   - it: should work with different endpoints

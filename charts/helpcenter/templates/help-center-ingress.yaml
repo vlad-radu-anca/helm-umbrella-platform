@@ -1,0 +1,66 @@
+{{- if .Values.helpcenter.enabled }}
+{{- if .Values.helpcenter.ingress.enabled }}
+{{- $fullName := include "helpcenter.fullname" . -}}
+{{- $svcPort := .Values.helpcenter.service.port -}}
+{{- $endpoint := .Values.endpoint -}}
+
+{{- if and .Values.helpcenter.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.helpcenter.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.helpcenter.ingress.annotations "kubernetes.io/ingress.class" .Values.helpcenter.ingress.className }}
+  {{- end }}
+{{- end }}
+
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion }}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion }}
+apiVersion: networking.k8s.io/v1beta1
+{{- else }}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "helpcenter.labels" . | nindent 4 }}
+  {{- with .Values.helpcenter.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.helpcenter.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.helpcenter.ingress.className }}
+  {{- end }}
+
+  {{- if .Values.helpcenter.ingress.tls }}
+  tls:
+    {{- range .Values.helpcenter.ingress.tls }}
+    - hosts:
+        - help-center.{{ $endpoint }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+
+  rules:
+    {{- range .Values.helpcenter.ingress.hosts }}
+    - host: help-center.{{ $endpoint }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: help-center
+                port:
+                  number: {{ $svcPort }}
+              {{- else }}
+              serviceName: help-center
+              servicePort: {{ $svcPort }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}

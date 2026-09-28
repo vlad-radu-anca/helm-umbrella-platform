@@ -10,10 +10,10 @@ spark:
       keycloak: http://keycloak/auth
     aws: 
       keycloak: http://keycloak-headless.keycloak.svc.cluster.local:8080/auth
-  image: vlad-radu-anca/ems-spark
+  image: vlad-radu-anca/platform-spark
   tag: 5.0.latest
   pullPolicy: Always
-  spark_jvm_options: '-Xms3000m -Xmx3000m -Djava.awt.headless=true -XX:+AlwaysPreTouch -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/ems-config -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -Djava.net.preferIPv4Stack=true -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExitOnOutOfMemoryError'
+  spark_jvm_options: '-Xms3000m -Xmx3000m -Djava.awt.headless=true -XX:+AlwaysPreTouch -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/platform-config -XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -Djava.net.preferIPv4Stack=true -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExitOnOutOfMemoryError'
   sse_enb_snmp_proxy_enabled: false
     
   replicaCount: 1
@@ -52,7 +52,7 @@ spark:
   
   nodeSelector:
     aws:
-      karpenter-node: ems-platform-autoscalernode-large
+      karpenter-node: platform-autoscalernode-large
     onprem: {}
     default:
   tolerations: []
@@ -80,12 +80,12 @@ spark:
       repo: curlimages/curl
       tag: 8.12.1
   secrets:
-    internal_elastic_client: "ems-platform_internal_elastic_client_xlv"
+    internal_elastic_client: "platform_internal_elastic_client_xlv"
     identity: spark-identity-secret
     trust: spark-trust-secret
     spark:
 
-endpoint: ems.example.local
+endpoint: platform.example.local
 
 dev_mode: false
 

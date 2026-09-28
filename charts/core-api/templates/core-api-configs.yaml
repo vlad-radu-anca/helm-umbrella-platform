@@ -8,7 +8,7 @@ data:
   DIESEL_WIKI_HEADERS: '{{  .Values.coreApi.data.diesel_wiki_header }}'
   SFTP_IP: '{{ .Values.coreApi.data.sftp_ip }}'
   DIESEL_SECRET: '{{  .Values.coreApi.data.diesel_secret }}'
-  EMS_CLIENT_SECRET: '{{ .Values.coreApi.data.ems_client_secret }}'
+  PLATFORM_CLIENT_SECRET: '{{ .Values.coreApi.data.platform_client_secret }}'
   POSTGRES_URL: 'jdbc:postgresql://{{ .Values.ConnectionUrls.pgDb.host }}/{{ .Values.ConnectionUrls.pgDb.dbname }}?ssl=false'
   KEYCLOAK_URL: '{{ if eq .Values.platform "aws" }}{{ .Values.ConnectionUrls.keycloak.aws }}{{ else }}{{ .Values.ConnectionUrls.keycloak.onprem }}{{ end }}'
   GENIEACS_API_URL: http://genieacsnbi.{{ template "coreApi.Namespace" . }}.svc.cluster.local:7557
