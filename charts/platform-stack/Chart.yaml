@@ -2,18 +2,18 @@ apiVersion: v2
 name: platform-stack
 description: platform stack application
 type: application
-version: 0.7.13
+version: 0.7.15
 appVersion: "1.0.0"
 maintainers:
   - name: vlad-radu-anca
     email: support@example.com
 dependencies:
   - name: cts-helm
-    version: 5.1.8
+    version: 5.1.9
     repository: oci://ghcr.io/vlad-radu-anca
     condition: cts.enabled
   - name: apigw-helm
-    version: 5.1.9
+    version: 5.1.10
     repository: oci://ghcr.io/vlad-radu-anca
     condition: apigw.enabled
   # - name: kafka-helm
@@ -21,70 +21,70 @@ dependencies:
   #   repository: oci://ghcr.io/vlad-radu-anca
   #   condition: kafka.enabled
   - name: kafka-mirror-helm
-    version: 0.1.3
+    version: 0.1.4
     repository: oci://ghcr.io/vlad-radu-anca
     condition: kafka-mirror.enabled
   - name: ngf-helm
-    version: 5.1.6
+    version: 5.1.7
     repository: oci://ghcr.io/vlad-radu-anca
     condition: ngf.enabled
   - name: core-api-helm
-    version: 5.1.8
+    version: 5.1.9
     repository: oci://ghcr.io/vlad-radu-anca
     condition: coreApi.enabled
   - name: event-collector-helm
-    version: 5.3.8
+    version: 5.3.9
     repository: oci://ghcr.io/vlad-radu-anca
     condition: evencollector.enabled
   - name: elasticsearch-helm
-    version: 5.1.14
+    version: 5.1.15
     repository: oci://ghcr.io/vlad-radu-anca
     condition: elasticsearch.enabled
   - name: cert-service-helm
-    version: 5.2.5
+    version: 5.2.6
     repository: oci://ghcr.io/vlad-radu-anca
     condition: cert-service.enabled
   - name: helpcenter-helm
-    version: 5.1.6
+    version: 5.1.7
     repository: oci://ghcr.io/vlad-radu-anca
     condition: helpcenter.enabled
   - name: webui-helm
-    version: 5.1.9
+    version: 5.1.10
     repository: oci://ghcr.io/vlad-radu-anca
     condition: webui.enabled
   - name: misc-helm
-    version: 5.1.6
+    version: 5.1.7
     repository: oci://ghcr.io/vlad-radu-anca
     condition: misc.enabled
   - name: mongo-helm
-    version: 5.1.7
+    version: 5.1.8
     repository: oci://ghcr.io/vlad-radu-anca
     condition: mongo.enabled
   - name: kibana-helm
-    version: 5.1.7
+    version: 5.1.8
     repository: oci://ghcr.io/vlad-radu-anca
     condition: kibana.enabled
   - name: sftp-server-helm
-    version: 5.1.5
+    version: 5.1.6
     repository: oci://ghcr.io/vlad-radu-anca
     condition: sftp-server.enabled
   - name: spark-helm
-    version: 5.1.6
+    version: 5.1.7
     repository: oci://ghcr.io/vlad-radu-anca
     condition: spark.enabled
   - name: swagger-helm
-    version: 5.1.5
+    version: 5.1.6
     repository: oci://ghcr.io/vlad-radu-anca
     condition: swagger.enabled
   - name: toc-helm
-    version: 5.1.8
+    version: 5.1.9
     repository: oci://ghcr.io/vlad-radu-anca
     condition: toc.enabled
   - name: topic-operator-helm
-    version: 5.1.4
+    version: 5.1.5
     repository: oci://ghcr.io/vlad-radu-anca
     condition: topicOperator.enabled
   - name: tus-helm
-    version: 5.1.9
+    version: 5.1.10
     repository: oci://ghcr.io/vlad-radu-anca
     condition: tus.enabled
