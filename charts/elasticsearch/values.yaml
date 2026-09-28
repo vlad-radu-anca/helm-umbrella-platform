@@ -3,6 +3,9 @@ platform: onprem  # or aws
 endpoint: platform.example.local
 
 elasticJob:
+  # Runs the post-install configuration job (index templates, users). Set to
+  # false when the job image is not available, for example in a demo cluster.
+  enabled: true
   ConnectionUrls:
     elastic: http://elastic:9200
   namespace: platform

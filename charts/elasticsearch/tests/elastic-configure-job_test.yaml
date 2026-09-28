@@ -1,0 +1,20 @@
+suite: elastic configure job
+templates:
+  - templates/elastic-configure-job.yaml
+tests:
+  - it: renders the job by default
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Job
+      - equal:
+          path: metadata.name
+          value: elastic-configure-job
+
+  - it: renders nothing when elasticJob.enabled is false
+    set:
+      elasticJob.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
