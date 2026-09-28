@@ -1,3 +1,4 @@
+{{- if .Values.elasticJob.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -77,3 +78,4 @@ spec:
             - configMapRef:
                 name: elastic-host-env
           resources: {}
+{{- end }}
