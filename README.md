@@ -159,3 +159,7 @@ helm upgrade --install platform oci://ghcr.io/vlad-radu-anca/platform-stack \
 - Full CI/CD: lint → dry-run on KinD → schema validation → OCI publish → umbrella update
 - Strimzi Kafka operator, cert-manager, NGINX Gateway Fabric (Kubernetes Gateway API)
 - Helm unit tests (`helm-unittest`) per chart
+
+## License
+
+[Apache-2.0](LICENSE)
