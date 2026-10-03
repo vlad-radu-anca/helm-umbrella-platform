@@ -9,6 +9,11 @@ on:
 jobs:
   update-umbrella-dependencies:
     runs-on: ubuntu-latest
+    # One umbrella update at a time. A manual run and a post-merge run that
+    # overlap both rewrite Chart.lock, and the second one fails its rebase.
+    concurrency:
+      group: umbrella-stack-update
+      cancel-in-progress: false
     permissions:
       contents: write
       packages: write

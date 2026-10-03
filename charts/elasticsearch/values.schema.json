@@ -8,6 +8,18 @@
       "description": "Global values passed from the umbrella chart",
       "additionalProperties": true
     },
+    "elasticJob": {
+      "type": "object",
+      "description": "Post-install configuration job for Elasticsearch",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Render the elastic-configure-job. Disable when its image is unavailable."
+        }
+      }
+    },
     "platform": {
       "type": "string",
       "enum": [
