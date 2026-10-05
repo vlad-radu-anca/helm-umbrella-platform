@@ -63,7 +63,9 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       restartPolicy: Always
-      {{- with .Values.nodeSelector }}
+      {{- /* nodeSelector is keyed by platform; pick the entry for this one. */}}
+      {{- $platform := (.Values.global).platform | default .Values.platform | default "onprem" }}
+      {{- with get (.Values.nodeSelector | default dict) $platform }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}

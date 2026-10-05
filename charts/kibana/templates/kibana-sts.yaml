@@ -178,7 +178,6 @@ spec:
           ports:
             - containerPort: 5601
               name: http
-          resources: {}
           volumeMounts:
             - name: elastic-admin-client-secrets
               mountPath: "/opt/platform/config/elastic"

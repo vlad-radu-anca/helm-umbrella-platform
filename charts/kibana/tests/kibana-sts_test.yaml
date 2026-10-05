@@ -1,0 +1,14 @@
+suite: kibana statefulset resources
+templates:
+  - templates/kibana-sts.yaml
+tests:
+  # A second, empty resources key used to follow the real one, so parsers that
+  # keep the last duplicate dropped the configured limits entirely.
+  - it: applies the resources from values
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 1000Mi
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 100m
