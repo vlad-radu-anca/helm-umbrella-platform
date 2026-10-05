@@ -1,0 +1,25 @@
+suite: elastic statefulset probes
+templates:
+  - templates/elastic-sts.yaml
+tests:
+  # The probes used to read <probe>.port while values defined <probe>.tcpSocket.port,
+  # which rendered port: null and made the StatefulSet invalid.
+  - it: wires every probe to the Elasticsearch HTTP port
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.tcpSocket.port
+          value: 9200
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.tcpSocket.port
+          value: 9200
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.tcpSocket.port
+          value: 9200
+
+  - it: follows a custom port
+    set:
+      elasticsearch.readinessProbe.tcpSocket.port: 9201
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.tcpSocket.port
+          value: 9201

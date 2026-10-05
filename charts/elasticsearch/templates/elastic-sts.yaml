@@ -135,19 +135,19 @@ spec:
           {{- end }}
           startupProbe:
             tcpSocket:
-              port: {{ .Values.elasticsearch.startupProbe.port }}
+              port: {{ .Values.elasticsearch.startupProbe.tcpSocket.port }}
             periodSeconds: {{ .Values.elasticsearch.startupProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.elasticsearch.startupProbe.timeoutSeconds }}
             successThreshold: {{ .Values.elasticsearch.startupProbe.successThreshold }}
             failureThreshold: {{ .Values.elasticsearch.startupProbe.failureThreshold }}
           readinessProbe:
             tcpSocket:
-              port: {{ .Values.elasticsearch.readinessProbe.port }}
+              port: {{ .Values.elasticsearch.readinessProbe.tcpSocket.port }}
             failureThreshold: {{ .Values.elasticsearch.readinessProbe.failureThreshold }}
             periodSeconds: {{ .Values.elasticsearch.readinessProbe.periodSeconds }}
           livenessProbe:
             tcpSocket:
-              port: {{ .Values.elasticsearch.livenessProbe.port }}
+              port: {{ .Values.elasticsearch.livenessProbe.tcpSocket.port }}
             failureThreshold: {{ .Values.elasticsearch.livenessProbe.failureThreshold }}
             periodSeconds: {{ .Values.elasticsearch.livenessProbe.periodSeconds }}
           resources:
