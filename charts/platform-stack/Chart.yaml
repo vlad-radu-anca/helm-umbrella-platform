@@ -2,14 +2,14 @@ apiVersion: v2
 name: platform-stack
 description: platform stack application
 type: application
-version: 0.8.1
+version: 0.8.2
 appVersion: "1.0.0"
 maintainers:
   - name: vlad-radu-anca
     email: support@example.com
 dependencies:
   - name: cts-helm
-    version: 5.1.9
+    version: 5.1.10
     repository: oci://ghcr.io/vlad-radu-anca
     condition: cts.enabled
   - name: apigw-helm
@@ -61,7 +61,7 @@ dependencies:
     repository: oci://ghcr.io/vlad-radu-anca
     condition: mongo.enabled
   - name: kibana-helm
-    version: 5.1.8
+    version: 5.1.9
     repository: oci://ghcr.io/vlad-radu-anca
     condition: kibana.enabled
   - name: sftp-server-helm
