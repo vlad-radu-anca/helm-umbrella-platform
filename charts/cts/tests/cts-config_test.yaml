@@ -66,7 +66,7 @@ tests:
           path: data["application.yaml"]
           pattern: "devMode: false"
 
-  - it: should use onprem mongo URI with authSource for onprem platform
+  - it: should use onprem mongo URI and set authSource separately for onprem platform
     set:
       platform: onprem
       cts.smallcell_support.enabled: true
@@ -87,9 +87,13 @@ tests:
         keycloak:
           clientSecret: "test-secret"
     asserts:
+      # The template keeps the URI as given and sets authSource as its own key.
       - matchRegex:
           path: data["application.yaml"]
-          pattern: 'uri: "mongodb://mongo-tenant:27017/\?serverSelectionTimeoutMS=4000&replicaSet=rs0&authSource=tocdb"'
+          pattern: 'uri: "mongodb://mongo-tenant:27017/\?serverSelectionTimeoutMS=4000&replicaSet=rs0"'
+      - matchRegex:
+          path: data["application.yaml"]
+          pattern: "authSource: tocdb"
       - matchRegex:
           path: data["application.yaml"]
           pattern: "database: tocdb"

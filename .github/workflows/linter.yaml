@@ -42,7 +42,49 @@ jobs:
           # Handle case where JSON strings aren't properly quoted
           FIXED_JSON=$(echo "$CHARTS_JSON" | sed 's/\[/["/' | sed 's/\]/"]/' | sed 's/,/","/g')
           echo "Debug: FIXED_JSON = $FIXED_JSON"
-          printf '%s\n' "$FIXED_JSON" | jq -r '.[]' | while read -r CHART; do
+          FAILED=0
+          while read -r CHART; do
             echo "🔍 Linting charts/$CHART"
-            helm lint "charts/$CHART" || echo "::warning file=charts/$CHART::Helm lint warning"
-          done
+            if ! helm lint "charts/$CHART"; then
+              echo "::error file=charts/$CHART/Chart.yaml::helm lint failed for $CHART"
+              FAILED=1
+            fi
+          done < <(printf '%s\n' "$FIXED_JSON" | jq -r '.[]')
+          exit $FAILED
+
+      - name: Install kubeconform
+        run: |
+          curl -sSfL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz \
+            | sudo tar xz -C /usr/local/bin kubeconform
+          kubeconform -v
+
+      # helm lint checks chart structure, not whether Kubernetes accepts the result.
+      # Rendering and validating against the API schema catches what lint cannot:
+      # a probe port that renders as null, a key emitted twice, a map where a
+      # string is required. Custom resources (cert-manager, Strimzi) are checked
+      # against the community CRD catalog instead of being skipped.
+      - name: Validate rendered manifests against the Kubernetes schema
+        run: |
+          CHARTS_JSON="${{ steps.set-charts.outputs.charts }}"
+          if [[ -z "$CHARTS_JSON" || "$CHARTS_JSON" == "[]" ]]; then
+            echo "No charts to validate."
+            exit 0
+          fi
+          FIXED_JSON=$(echo "$CHARTS_JSON" | sed 's/\[/["/' | sed 's/\]/"]/' | sed 's/,/","/g')
+          CRD_CATALOG='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+
+          FAILED=0
+          while read -r CHART; do
+            # The umbrella needs its dependencies pulled first; its subcharts are validated on their own.
+            [[ "$CHART" == "platform-stack" ]] && continue
+            echo "🔎 Validating charts/$CHART"
+            if ! helm template validate "charts/$CHART" \
+                | kubeconform -strict -summary -output text \
+                    -kubernetes-version 1.33.0 \
+                    -schema-location default \
+                    -schema-location "$CRD_CATALOG"; then
+              echo "::error file=charts/$CHART/Chart.yaml::rendered manifests for $CHART fail Kubernetes schema validation"
+              FAILED=1
+            fi
+          done < <(printf '%s\n' "$FIXED_JSON" | jq -r '.[]')
+          exit $FAILED
