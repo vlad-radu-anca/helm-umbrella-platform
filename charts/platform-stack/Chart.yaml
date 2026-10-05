@@ -2,7 +2,7 @@ apiVersion: v2
 name: platform-stack
 description: platform stack application
 type: application
-version: 0.8.0
+version: 0.8.1
 appVersion: "1.0.0"
 maintainers:
   - name: vlad-radu-anca
@@ -37,7 +37,7 @@ dependencies:
     repository: oci://ghcr.io/vlad-radu-anca
     condition: evencollector.enabled
   - name: elasticsearch-helm
-    version: 5.2.0
+    version: 5.2.1
     repository: oci://ghcr.io/vlad-radu-anca
     condition: elasticsearch.enabled
   - name: cert-service-helm
